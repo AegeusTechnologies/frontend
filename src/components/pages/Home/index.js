@@ -22,11 +22,9 @@ import {
   Grid, 
   Box, 
   Paper,
-  Accordion, 
-  AccordionSummary, 
-  AccordionDetails  
+  
 } from '@mui/material';
-import { FixedSizeList as List } from 'react-window'
+
 import { 
   DeviceHub as DeviceHubIcon,
   DevicesOther as DevicesIcon,
@@ -331,137 +329,132 @@ const Dashboard = () => {
           </Card>
         </Grid>
 
-        {/* Battery Discharge Line Chart */}
-        <Grid item xs={12} md={6}>
-          <Card elevation={3}>
+       
+          <Grid item xs={12} md={6}>
+            <Card elevation={3}>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+            Day-wise Average Battery Discharge Cycles
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={limitedPerformanceData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis label={{ value: 'Discharge Cycles', angle: -90, position: 'insideLeft' }} />
+              <Tooltip />
+              <Line 
+                type="monotone" 
+                dataKey="avg_battery_discharge" 
+                stroke={colors.secondary}
+                strokeWidth={2}
+              />
+            </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+              </Grid>
+
+              <Modal
+          title="Inactive Devices"
+          open={showInactiveDevices}
+          onCancel={() => setShowInactiveDevices(false)}
+          footer={null}
+          width={800}
+              >
+          <Table
+            dataSource={inactiveDevices}
+            columns={[
+              {
+                title: 'Robot Name',
+                dataIndex: 'name',
+                key: 'name',
+                sorter: (a, b) => a.name.localeCompare(b.name)
+              },
+              {
+                title: 'Last Seen',
+                dataIndex: 'lastSeenAt',
+                key: 'lastSeenAt',
+                render: (text) => new Date(text).toLocaleString(),
+                sorter: (a, b) => new Date(a.lastSeenAt) - new Date(b.lastSeenAt)
+              },
+              {
+                title: 'Status',
+                key: 'status',
+                render: () => <span style={{ color: 'red' }}>Inactive</span>
+              }
+            ]}
+            pagination={{ pageSize: 10 }}
+            scroll={{ y: 400 }}
+          />
+              </Modal>
+
+              <Modal
+          title="All Robots"
+          open={showAllDevices}
+          onCancel={() => setShowAllDevices(false)}
+          footer={null}
+          width={800}
+              >
+          <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Day-wise Average Battery Discharge Cycles
+              <Typography variant="h6" gutterBottom>
+                Robots Status Distribution
               </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={limitedPerformanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis label={{ value: 'Discharge Cycles', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip />
-                  <Line 
-                    type="monotone" 
-                    dataKey="avg_battery_discharge" 
-                    stroke={colors.secondary}
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      <Modal
-  title="Inactive Devices"
-  open={showInactiveDevices}
-  onCancel={() => setShowInactiveDevices(false)}
-  footer={null}
-  width={800}
->
-<Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
-  {inactiveDevices && inactiveDevices.map((device) => {
-    const deviceId = device?.id || device?.devEui; // Fallback to devEui if id is undefined
-
-    if (!device || !deviceId) {
-      // Handle the case where the device is missing or doesn't have a valid identifier
-      return null;
-    }
-
-    return (
-      <Accordion key={deviceId}>
-        <AccordionSummary>
-          <Typography variant="h6">{device.name}</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography variant="body2" color="text.secondary">
-            Last Seen: {device.lastSeenAt ? new Date(device.lastSeenAt).toLocaleString() : 'Never'}
-          </Typography>
-          <Typography variant="body2" color="text.primary">
-            Status: <span style={{ color: 'red' }}>Inactive</span>
-          </Typography>
-        </AccordionDetails>
-      </Accordion>
-    );
-  })}
-</Box>
-
-</Modal>
-
-
-      <Modal
-  title="All Robots"
-  open={showAllDevices}
-  onCancel={() => setShowAllDevices(false)}
-  footer={null}
-  width={800}
->
-  <Card>
-    <CardContent>
-      <Typography variant="h6" gutterBottom>
-        Robots Status Distribution
-      </Typography>
-      {/* Render the Pie Chart here */}
+              {/* Render the Pie Chart here */}
       <DeviceStatusPieChart
         data={[
           { name: 'Active Robots', value: dashboardData.devices.activeCount },
           { name: 'Inactive Robots', value: dashboardData.devices.inactiveCount }
         ]}
-        colors={[colors.success, colors.secondary]} // Green for Active, Red for Inactive
-      />
-      <Typography variant="body1" sx={{ mt: 2, textAlign: 'center' }}>
-        Total Robots: {dashboardData.devices.totalCount}
-        <br />
-        Active Robots: {dashboardData.devices.activeCount}
-        <br />
-        Inactive Robots: {dashboardData.devices.inactiveCount}
-      </Typography>
-    </CardContent>
-  </Card>
-</Modal>
+        />
+        <Typography variant="body1" sx={{ mt: 2, textAlign: 'center' }}>
+          Total Robots: {dashboardData.devices.totalCount}
+          <br />
+          Active Robots: {dashboardData.devices.activeCount}
+          <br />
+          Inactive Robots: {dashboardData.devices.inactiveCount}
+        </Typography>
+          </CardContent>
+        </Card>
+      </Modal>
 
-<Modal
-  title="Active Devices"
-  open={showActiveDevices}
-  onCancel={() => setShowActiveDevices(false)}
-  footer={null}
-  width={800}
->
-  <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
-    <List
-      height={400}  // Set the height of the visible area
-      itemCount={activeDevices.length}  // Number of items to render
-      itemSize={80}  // Height of each item in the list
-      width="100%"  // Full width
-    >
-      {({ index, style }) => {
-        const device = activeDevices[index];
-        return (
-          <Accordion key={device.devEui} style={style}>
-            <AccordionSummary>
-              <Typography variant="h6">{device.name}</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography variant="body2" color="text.secondary">
-                Last Seen: {new Date(device.lastSeenAt).toLocaleString()}
-              </Typography>
-              <Typography variant="body2" color="text.primary">
-                Status: <span style={{ color: 'green' }}>Active</span>
-              </Typography>
-            </AccordionDetails>
-          </Accordion>
+      <Modal
+        title="Active Devices"
+        open={showActiveDevices}
+        onCancel={() => setShowActiveDevices(false)}
+        footer={null}
+        width={800}
+      >
+        <Table
+          dataSource={activeDevices}
+          columns={[
+        {
+          title: 'Robot Name',
+          dataIndex: 'name',
+          key: 'name',
+          sorter: (a, b) => a.name.localeCompare(b.name)
+        },
+        {
+          title: 'Last Seen',
+          dataIndex: 'lastSeenAt',
+          key: 'lastSeenAt',
+          render: (text) => new Date(text).toLocaleString(),
+          sorter: (a, b) => new Date(a.lastSeenAt) - new Date(b.lastSeenAt)
+        },
+        {
+          title: 'Status',
+          key: 'status',
+          render: () => <span style={{ color: 'green' }}>Active</span>
+        }
+          ]}
+          pagination={{ pageSize: 10 }}
+          scroll={{ y: 400 }}
+        />
+      </Modal>
+          </Box>
         );
-      }}
-    </List>
-  </Box>
-</Modal>
-    </Box>
-  );
-};
+      };
+
 
 export default Dashboard;
