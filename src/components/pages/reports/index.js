@@ -12,7 +12,7 @@ const RobotPerformanceTable = () => {
 
   // Create axios instance with proper base URL
   const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: 'http://103.161.75.85:5002/api',
     responseType: 'json'
   });
 
@@ -35,7 +35,7 @@ const RobotPerformanceTable = () => {
     try {
       // Make sure to use the correct endpoint
       const response = await axios({
-        url: `http://localhost:5000/api/download-report/${timeframe}`,
+        url: `http://103.161.75.85:5002/api/download-report/${timeframe}`,
         method: 'GET',
         responseType: 'blob', // Important for file downloads
       });

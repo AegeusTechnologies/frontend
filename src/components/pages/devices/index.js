@@ -8,7 +8,7 @@ import {
 } from "@ant-design/icons";
 import { useLocalStorageforall } from '../../useLocalStorage';
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "http://103.161.75.85:5002/api";
 const ITEMS_PER_PAGE = 10;
 
 function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
@@ -160,50 +160,73 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
               onClick={() => handleToggleEnabled(record)}
               icon={<PoweroffOutlined />}
               danger={!isDisabled}
-              className="hover:shadow-md transition-all duration-300"
-              style={{ minWidth: '100px' }}
+              className={`
+                hover:scale-105 transform transition-all duration-300
+                ${isDisabled 
+                  ? 'bg-gray-100 hover:bg-gray-200 border-gray-300' 
+                  : 'bg-red-500 hover:bg-red-600 border-none text-white'}
+              `}
+              style={{ minWidth: '100px', borderRadius: '8px' }}
             >
               {isDisabled ? 'Enable' : 'Disable'}
             </Button>
             <Button
               onClick={() => handleToggleDevice(record.devEui, "on")}
-              type="primary"
               disabled={isDisabled || buttonsDisabled}
-              className="hover:shadow-md transition-all duration-300 bg-green-500 hover:bg-green-600"
-              style={{ minWidth: '90px' }}
+              className={`
+                hover:scale-105 transform transition-all duration-300
+                ${isDisabled || buttonsDisabled
+                  ? 'bg-gray-100 text-gray-400'
+                  : 'bg-emerald-500 hover:bg-emerald-600 border-none text-white'}
+              `}
+              style={{ minWidth: '90px', borderRadius: '8px' }}
             >
               Turn On
             </Button>
             <Button
               onClick={() => handleToggleDevice(record.devEui, "off")}
-              danger
               disabled={isDisabled || buttonsDisabled}
-              className="hover:shadow-md transition-all duration-300"
-              style={{ minWidth: '90px' }}
+              className={`
+                hover:scale-105 transform transition-all duration-300
+                ${isDisabled || buttonsDisabled
+                  ? 'bg-gray-100 text-gray-400'
+                  : 'bg-rose-500 hover:bg-rose-600 border-none text-white'}
+              `}
+              style={{ minWidth: '90px', borderRadius: '8px' }}
             >
               Turn Off
             </Button>
             <Button
               onClick={() => handleToggleDevice(record.devEui, "gohome")}
               disabled={isDisabled || buttonsDisabled}
-              type="default"
-              className="hover:shadow-md transition-all duration-300 hover:border-blue-400 hover:text-blue-400"
-              style={{ minWidth: '120px' }}
+              className={`
+                hover:scale-105 transform transition-all duration-300
+                ${isDisabled || buttonsDisabled
+                  ? 'bg-gray-100 text-gray-400'
+                  : 'bg-indigo-500 hover:bg-indigo-600 border-none text-white'}
+              `}
+              style={{ minWidth: '120px', borderRadius: '8px' }}
             >
               Return To Dock
             </Button>
             <Button
               onClick={() => handleToggleDevice(record.devEui, "reboot")}
-              type="default"
-              className="hover:shadow-md transition-all duration-300 hover:border-orange-400 hover:text-orange-400"
-              style={{ minWidth: '90px' }}
+              disabled={isDisabled || buttonsDisabled}
+              className={`
+                hover:scale-105 transform transition-all duration-300
+                ${isDisabled || buttonsDisabled
+                  ? 'bg-gray-100 text-gray-400'
+                  : 'bg-amber-500 hover:bg-amber-600 border-none text-white'}
+              `}
+              style={{ minWidth: '90px', borderRadius: '8px' }}
             >
               Reboot
             </Button>
             <Button
               onClick={() => navigate(`/device/${record.devEui}`)}
-              type="link"
-              className="hover:text-blue-600 transition-all duration-300"
+              className="hover:scale-105 transform transition-all duration-300
+                bg-cyan-500 hover:bg-cyan-600 border-none text-white"
+              style={{ minWidth: '90px', borderRadius: '8px' }}
             >
               View
             </Button>

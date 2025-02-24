@@ -47,7 +47,7 @@ import {
   Error as ErrorIcon
 } from "@mui/icons-material";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "http://103.161.75.85:5002/api";
 
 const channelMapping = {
   "CH1": { name: "Robot ID", icon: RobotIcon },
@@ -124,10 +124,15 @@ function DeviceDetails() {
       setRetryCount(0);
 
       const data = await response.json();
+      const rssi = data.rssi;
+      const deviceName = data.deviceName;
       
-      const processedData = data.data && Object.keys(data.data).length > 0 
-        ? data.data 
-        : generateDefaultData();
+      const processedData = {
+        ...generateDefaultData(),
+        ...(data.data || {}),
+        CH1: deviceName || 'N/A',  // Override CH1 with deviceName
+        CH3: rssi || 'N/A'        // Override CH3 with rssi
+      };
 
       setDeviceData(processedData);
       

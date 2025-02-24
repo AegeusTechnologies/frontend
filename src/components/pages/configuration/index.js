@@ -39,7 +39,7 @@ const Configuration = ({ setHumidityThreshold, setRainThreshold, setWindSpeedThr
   // Fetch current weather
   const fetchWeather = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/gateway');
+      const response = await fetch('http://103.161.75.85:5002/api/gateway');
       const data = await response.json();
       if (data && data.weather) {
         setCurrentWeather({
@@ -67,7 +67,7 @@ const Configuration = ({ setHumidityThreshold, setRainThreshold, setWindSpeedThr
   const sendThresholdToBackend = async () => {
     try {
       setLoading(true);
-      const response = await axios.post('http://localhost:5000/api/update-threshold', {
+      const response = await axios.post('http://103.161.75.85:5002/api/update-threshold', {
         windSpeedThreshold: windSpeed,     // Send wind speed in mph
         humidityThreshold: humidity,       // Send humidity as percentage
         rainEnabled: rainEnabled,          // Just send boolean flag instead of threshold
