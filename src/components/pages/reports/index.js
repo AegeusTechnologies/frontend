@@ -7,7 +7,7 @@ const RobotPerformanceTable = () => {
     individualDevices: [],
     overallSummary: null
   });
-  const [timeframe, setTimeframe] = useState('weekly');
+  const [timeframe, setTimeframe] = useState('daily');
   const [isDownloading, setIsDownloading] = useState(false);
 
   // Create axios instance with proper base URL
@@ -20,13 +20,16 @@ const RobotPerformanceTable = () => {
     const fetchPerformanceData = async () => {
       try {
         const response = await api.get(`/${timeframe}-report`);
+        console.log('API Response:', response.data);  // Log the full response
+        if (response.data.individualDevices && response.data.individualDevices.length > 0) {
+          console.log('Sample device data:', response.data.individualDevices[0]);  // Log first device
+        }
         setPerformanceData(response.data);
       } catch (error) {
         console.error('Error fetching performance data:', error);
-        // You might want to show an error message to the user here
       }
     };
-
+  
     fetchPerformanceData();
   }, [timeframe]);
 
@@ -74,11 +77,11 @@ const RobotPerformanceTable = () => {
         <div className="flex space-x-2">
           <button 
             className={`px-4 py-2 rounded transition-colors duration-200 ${
-              timeframe === 'weekly' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'
+              timeframe === 'daily' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'
             }`}
-            onClick={() => setTimeframe('weekly')}
+            onClick={() => setTimeframe('daily')}
           >
-            Weekly
+            daily
           </button>
           <button 
             className={`px-4 py-2 rounded transition-colors duration-200 ${
@@ -151,12 +154,39 @@ const RobotPerformanceTable = () => {
                   index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                 }`}
               >
-                <td className="p-3">{device.device_id}</td>
+                <td className="p-3">{device.device_name}</td>
                 <td className="p-3">{device.total_panels_cleaned}</td>
                 <td className="p-3">{device.avg_battery_discharge}%</td>
                 <td className="p-3">
-                  {new Date(device[`${timeframe.slice(0, -2)}_start`]).toLocaleDateString()}
-                </td>
+  {(() => {
+    try {
+      // Match exactly what's coming from your backend
+      const dateKeyMap = {
+        'daily': 'day',
+        'monthly': 'month_start',
+        'yearly': 'year_start'
+      };
+      
+      const dateKey = dateKeyMap[timeframe];
+      const dateValue = device[dateKey];
+      
+      if (!dateValue) {
+        return 'No date available';
+      }
+      
+      const formattedDate = new Date(dateValue).toLocaleString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+      
+      return formattedDate !== 'Invalid Date' ? formattedDate : 'Invalid date format';
+    } catch (error) {
+      console.error('Date parsing error:', error, device);
+      return 'Error displaying date';
+    }
+  })()}
+</td>
               </tr>
             ))}
           </tbody>

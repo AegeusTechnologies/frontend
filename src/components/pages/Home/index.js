@@ -407,6 +407,7 @@ const Dashboard = () => {
           { name: 'Active Robots', value: dashboardData.devices.activeCount },
           { name: 'Inactive Robots', value: dashboardData.devices.inactiveCount }
         ]}
+        colors={[colors.success, colors.secondary]}
         />
         <Typography variant="body1" sx={{ mt: 2, textAlign: 'center' }}>
           Total Robots: {dashboardData.devices.totalCount}

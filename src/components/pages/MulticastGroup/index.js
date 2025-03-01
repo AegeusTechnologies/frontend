@@ -53,19 +53,24 @@ const MulticastGroup = ({ humidityThreshold, rainThreshold, windSpeedThreshold }
         const weatherData = data.weather;
 
         const warnings = [];
-        if (weatherData.humidity > humidityThreshold) {
+        if (parseFloat(weatherData.humidity) > parseFloat(humidityThreshold)) {
           warnings.push(`Humidity (${weatherData.humidity}%) exceeds threshold (${humidityThreshold}%)`);
         }
-        if (weatherData.rain > rainThreshold) {
+        if (parseFloat(weatherData.rain) > parseFloat(rainThreshold)) {
           warnings.push(`Rain detected (${weatherData.rain}mm)`);
         }
-        if (weatherData.windSpeed > windSpeedThreshold) {
-          warnings.push(`Wind speed (${weatherData.windSpeed}m/s) exceeds threshold (${windSpeedThreshold}m/s)`);
+        // Convert wind speed from m/s to mph (1 m/s = 2.23694 mph)
+        const windSpeedMph = weatherData.windSpeed * 2.23694;
+        console.log('Raw wind speed (m/s):', weatherData.windSpeed);
+        console.log('Converted wind speed (mph):', windSpeedMph.toFixed(2));
+        if (windSpeedMph > Number(windSpeedThreshold)) {
+          warnings.push(`Wind speed (${windSpeedMph.toFixed(2)}mph) exceeds threshold (${windSpeedThreshold}mph)`);
         }
-
+        
         setWeatherWarnings(warnings);
         setButtonsDisabled(warnings.length > 0);
       }
+
     } catch (error) {
       console.error("Fetch error:", error);
       setWeatherWarnings(['Failed to fetch weather data']);
@@ -323,6 +328,24 @@ const cancelScheduledTask = async (taskId) => {
             View Scheduled Tasks
           </Button>
         </div>
+
+        {weatherWarnings.length > 0 && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-red-700">
+                Robot operations disabled due to weather conditions:
+              </p>
+              <ul className="mt-2 list-disc list-inside text-sm text-red-700">
+                {weatherWarnings.map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
 
         {/* Select All Checkbox */}
         <div className="flex items-center">

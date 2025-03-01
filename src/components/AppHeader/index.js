@@ -17,7 +17,7 @@ function AppHeader() {
     useEffect(() => {
         const fetchWeatherData = async () => {
             try {
-                const response = await axios.get('http://localhost:5000/api/gateway');
+                const response = await axios.get('http://103.161.75.85:5002/api/gateway');
 
                 if (response.data && response.data.weather) {
                     setWeatherData(response.data.weather);

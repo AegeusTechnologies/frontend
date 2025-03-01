@@ -60,9 +60,7 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
             warnings.push(`Wind speed (${windSpeedMph.toFixed(2)}mph) exceeds threshold (${windSpeedThreshold}mph)`);
           }
           
-        console.log(`Calculated wind speed: ${windSpeedMph}, Threshold: ${windSpeedThreshold}`);
-        console.log(weatherData.windSpeed)
-        console.log(weatherData.humidity)
+  
 
           setWeatherWarnings(warnings);
           setButtonsDisabled(warnings.length > 0);
