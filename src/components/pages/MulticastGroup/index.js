@@ -14,7 +14,7 @@ import { ClockCircleOutlined, DeleteOutlined } from "@ant-design/icons";
 import axios from "axios";
 import moment from "moment";
 
-const API_BASE_URL = "http://103.161.75.85:5002/api";
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL;
 
 const MulticastGroup = ({ humidityThreshold, rainThreshold, windSpeedThreshold }) => {
   // State declarations

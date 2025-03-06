@@ -139,9 +139,9 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
 
-        const multicastResponse =await axios.get('http://103.161.75.85:5002/api/multicast-groups')
-        const devicesResponse= await axios.get('http://103.161.75.85:5002/api/devices')
-        const performanceResponse =await axios.get('http://103.161.75.85:5002/api/robot-performance/last-7-days')
+        const multicastResponse =await axios.get(`${process.env.REACT_APP_BACKEND_URL}/multicast-groups`)
+        const devicesResponse= await axios.get(`${process.env.REACT_APP_BACKEND_URL}/devices`)
+        const performanceResponse =await axios.get(`${process.env.REACT_APP_BACKEND_URL}/robot-performance/last-7-days`)
         // // const [multicastResponse, devicesResponse, performanceResponse] = await Promise.all([
         //  // axios.get('http://192.168.0.239:5000/api/multicast-groups'),
         //   axios.get('http://192.168.0.239:5000/api/devices'),

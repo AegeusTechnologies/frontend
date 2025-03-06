@@ -17,7 +17,7 @@ function AppHeader() {
     useEffect(() => {
         const fetchWeatherData = async () => {
             try {
-                const response = await axios.get('http://103.161.75.85:5002/api/gateway');
+                const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/gateway`);
 
                 if (response.data && response.data.weather) {
                     setWeatherData(response.data.weather);
@@ -85,7 +85,7 @@ function AppHeader() {
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', color: 'green' }}>
                     <WindPower style={{ marginRight: '5px' }} /> 
-                    Wind: {Math.floor(windSpeed*2.3)} mph
+                    Wind: {Math.floor(windSpeed*2.4)} mph
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', color: 'indigo' }}>
                         <Umbrella style={{ marginRight: '5px' }} /> 

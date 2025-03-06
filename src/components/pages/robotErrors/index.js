@@ -39,7 +39,7 @@ const RobotErrors = () => {
   useEffect(() => {
     const fetchDeviceErrors = async () => {
       try {
-        const response = await fetch('http://103.161.75.85:5002/api/get-errors');
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/get-errors`);
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }

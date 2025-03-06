@@ -14,7 +14,7 @@ import axios from "axios";
 import moment from "moment";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
-const API_BASE_URL = "http://103.161.75.85:5002/api";
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Simple color scheme
 const COLORS = {

@@ -73,7 +73,7 @@ const Login = ({ onLogin }) => {
         />
 
         <img
-          src="Aegeus-technologies-logo.png"
+          src="/Aegeus-technologies-logo.png"
           alt="Company Logo"
           style={{
             width: '150px',

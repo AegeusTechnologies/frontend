@@ -47,7 +47,7 @@ import {
   Error as ErrorIcon
 } from "@mui/icons-material";
 
-const API_BASE_URL = "http://103.161.75.85:5002/api";
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL;
 
 const channelMapping = {
   "CH1": { name: "Robot ID", icon: RobotIcon },

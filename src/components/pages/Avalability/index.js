@@ -96,9 +96,9 @@ export const Avalability=()=>{
   const fetchData = async () => {
     try {
       const [gatewayResponse, serverResponse, deviceResponse] = await Promise.all([
-        fetch('http://103.161.75.85:5002/api/allGateways'),
-        fetch('http://103.161.75.85:5002/api/server'),
-        fetch('http://103.161.75.85:5002/api/devices')
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/allGateways`),
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/server`),
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/devices`)
       ]);
       
       const deviceResult = await deviceResponse.json();
