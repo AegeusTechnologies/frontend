@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Download } from 'lucide-react'; // Adding download icon for better UX
+import classNames from 'classnames';
+import log from 'loglevel';
 
 const RobotPerformanceTable = () => {
   const [performanceData, setPerformanceData] = useState({
@@ -19,19 +21,33 @@ const RobotPerformanceTable = () => {
   useEffect(() => {
     const fetchPerformanceData = async () => {
       try {
-        const response = await api.get(`/${timeframe}-report`);
-        console.log('API Response:', response.data);  // Log the full response
-        if (response.data.individualDevices && response.data.individualDevices.length > 0) {
-          console.log('Sample device data:', response.data.individualDevices[0]);  // Log first device
+        // Reset state before fetching new data
+        setPerformanceData({
+          individualDevices: [],
+          overallSummary: null
+        });
+        
+        const validTimeframes = ['daily', 'monthly', 'yearly'];
+        if (!validTimeframes.includes(timeframe)) {
+          throw new Error(`Invalid timeframe: ${timeframe}`);
         }
+        const response = await api.get(`/${timeframe}-report`);
+        
+        // Add additional logging to see the structure
+        console.log(`${timeframe} response structure:`, JSON.stringify(response.data, null, 2));
+        
         setPerformanceData(response.data);
       } catch (error) {
         console.error('Error fetching performance data:', error);
       }
+
+      
     };
   
     fetchPerformanceData();
   }, [timeframe]);
+
+
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -64,14 +80,40 @@ const RobotPerformanceTable = () => {
       // Clean up the blob URL
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Download error:', error);
-      alert('Failed to download the report. Please try again.');
+      console.error('Download error:', error.message, error.response ? error.response.status : '');
+      alert(`Failed to download the report. Error: ${error.message}. Please try again.`);
     } finally {
       setIsDownloading(false);
     }
   };
-
+  const formatDate = (dateValue, timeframe) => {
+    try {
+      // First check if the column exists directly
+      const dateKeyMap = {
+        'daily': 'day',
+        'monthly': 'month_start',
+        'yearly': 'year_start'
+      };
+      
+      const dateKey = dateKeyMap[timeframe];
+      
+      // Try direct access first, then try as a string key
+      let dateString = dateValue[dateKey];
+      
+      if (!dateString) {
+        console.log('Date value missing:', dateValue, 'for key:', dateKey);
+        return 'No date available';
+      }
+      
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-IN');
+    } catch (error) {
+      console.error('Date parsing error:', error, dateValue);
+      return 'Error displaying date';
+    }
+  };
   return (
+    <div className="container mx-auto p-4">
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
         <div className="flex space-x-2">
@@ -101,9 +143,10 @@ const RobotPerformanceTable = () => {
           </button>
         </div>
         <button 
-          className={`bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center space-x-2 transition-colors duration-200 ${
-            isDownloading ? 'opacity-75 cursor-not-allowed' : ''
-          }`}
+          className={classNames(
+            'bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center space-x-2 transition-colors duration-200',
+            { 'opacity-75 cursor-not-allowed': isDownloading }
+          )}
           onClick={handleDownload}
           disabled={isDownloading}
         >
@@ -154,45 +197,17 @@ const RobotPerformanceTable = () => {
                   index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                 }`}
               >
-                <td className="p-3">{device.device_name}</td>
-                <td className="p-3">{device.total_panels_cleaned}</td>
-                <td className="p-3">{device.avg_battery_discharge}%</td>
-                <td className="p-3">
-  {(() => {
-    try {
-      // Match exactly what's coming from your backend
-      const dateKeyMap = {
-        'daily': 'day',
-        'monthly': 'month_start',
-        'yearly': 'year_start'
-      };
-      
-      const dateKey = dateKeyMap[timeframe];
-      const dateValue = device[dateKey];
-      
-      if (!dateValue) {
-        return 'No date available';
-      }
-      
-      const formattedDate = new Date(dateValue).toLocaleString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-      
-      return formattedDate !== 'Invalid Date' ? formattedDate : 'Invalid date format';
-    } catch (error) {
-      console.error('Date parsing error:', error, device);
-      return 'Error displaying date';
-    }
-  })()}
-</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              <td className="p-3">{device.device_name}</td>
+              <td className="p-3">{device.total_panels_cleaned}</td>
+              <td className="p-3">{device.avg_battery_discharge}%</td>
+              <td className="p-3">{formatDate(device, timeframe)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
+  </div>
+</div>
   );
 };
 
