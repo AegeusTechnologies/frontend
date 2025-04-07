@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import Highcharts from 'highcharts';
+import HighchartsReact from 'highcharts-react-official';
+import HC_exporting from 'highcharts/modules/exporting';
+import HC_exportData from 'highcharts/modules/export-data';
+import HC_offlineExporting from 'highcharts/modules/offline-exporting';
+
+
 import { 
-  BarChart, 
-  Bar, 
-  LineChart, 
-  Line, 
+  
   PieChart,
   Pie,
   Cell,
   Legend,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
   Tooltip, 
   ResponsiveContainer
 } from 'recharts';
@@ -40,6 +41,8 @@ const Dashboard = () => {
   const [showAllDevices, setShowAllDevices] = useState(false);
   const [showActiveDevices, setShowActiveDevices] = useState(false);
   const [allDevices, setAllDevices] = useState([]);
+  const [batteryChart, setBatteryChart] = useState(null)
+  const  [ panelsCleaned,setPanelsCleaned]= useState(null)
   
   const [dashboardData, setDashboardData] = useState({
     multicastGroups: { totalCount: 0 },
@@ -135,18 +138,76 @@ const Dashboard = () => {
       render: (text) => new Date(text).toLocaleString(),
     },
    ];
+
+   useEffect(() => {
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/robot-battery-report/weekly`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add exporting options to the chart configuration
+            const chartConfig = {
+                ...data.chartData,
+                exporting: {
+                    enabled: true,
+                    buttons: {
+                        contextButton: {
+                            menuItems: [
+                                'downloadPNG',
+                                'downloadJPEG',
+                                'downloadPDF',
+                                'downloadSVG',
+                                'downloadCSV',
+                                'downloadXLS'
+                            ]
+                        }
+                    }
+                }
+            };
+            setBatteryChart(chartConfig);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}, []);
+
+useEffect(() => {
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/robot-panels-report/weekly`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add exporting options to the chart configuration
+            const chartConfig = {
+                ...data.chartData,
+                exporting: {
+                    enabled: true,
+                    buttons: {
+                        contextButton: {
+                            menuItems: [
+                                'downloadPNG',
+                                'downloadJPEG',
+                                'downloadPDF',
+                                'downloadSVG',
+                                'downloadCSV',
+                                'downloadXLS'
+                            ]
+                        }
+                    }
+                }
+            };
+            setPanelsCleaned(chartConfig);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}, []);
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
 
-        const multicastResponse =await axios.get(`${process.env.REACT_APP_BACKEND_URL}/multicast-groups`)
-        const devicesResponse= await axios.get(`${process.env.REACT_APP_BACKEND_URL}/devices`)
-        const performanceResponse =await axios.get(`${process.env.REACT_APP_BACKEND_URL}/robot-performance/last-7-days`)
-        // // const [multicastResponse, devicesResponse, performanceResponse] = await Promise.all([
-        //  // axios.get('http://192.168.0.239:5000/api/multicast-groups'),
-        //   axios.get('http://192.168.0.239:5000/api/devices'),
-        //   axios.get('http://192.168.0.239:5000/api/robot-performance/last-7-days')
-        // ]);
+        const multicastResponse = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/multicast-groups`)
+        const devicesResponse = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/devices`)
         const devices = devicesResponse.data.result;
         // Filter active and inactive devices
         const now = new Date();
@@ -160,7 +221,6 @@ const Dashboard = () => {
           return (now - lastSeen) > thirtyMinutes;
         });
 
-        console.log(inactiveDevicesList)
         // Update state
         setAllDevices(devices);
         setActiveDevices(activeDevicesList);
@@ -175,13 +235,7 @@ const Dashboard = () => {
             activeCount: activeDevicesList.length,
             inactiveCount: inactiveDevicesList.length
           },
-          performanceData: performanceResponse.data,
-          energyStats: {
-            totalEnergyGenerated: performanceResponse.data.reduce((sum, day) => 
-              sum + (day.total_panels_cleaned * 10), 0),
-            totalPanelsCleaned: performanceResponse.data.reduce((sum, day) => 
-              sum + day.total_panels_cleaned, 0)
-          }
+          
         });
       } catch (error) {
         console.error('Dashboard data fetch error:', error);
@@ -196,7 +250,7 @@ const Dashboard = () => {
   const renderCustomLabel = ({ name, percent }) => {
     return `${(percent * 100).toFixed(0)}%`;
   };
-  const limitedPerformanceData = dashboardData.performanceData.slice(0, 7);
+ 
   const DeviceStatusPieChart = ({ data, colors }) => {
     return (
       <ResponsiveContainer width="100%" height={400}>
@@ -302,59 +356,23 @@ const Dashboard = () => {
     </Grid>
   ))}
 </Grid>
+        <div>
+            {panelsCleaned && (
+                <HighchartsReact
+                    highcharts={Highcharts}
+                    options={panelsCleaned}
+                />
+            )}
+        </div>
 
-
-      {/* Performance Visualizations */}
-      <Grid container spacing={3}>
-        {/* Panels Cleaned Bar Chart */}
-        <Grid item xs={12} md={6}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Day-wise Total Panels Cleaned
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={limitedPerformanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis label={{ value: 'Panels Cleaned', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip />
-                  <Bar 
-                    dataKey="total_panels_cleaned" 
-                    fill={colors.primary} 
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-       
-          <Grid item xs={12} md={6}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-            Day-wise Average Battery Discharge Cycles
-                </Typography>
-                <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={limitedPerformanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis label={{ value: 'Discharge Cycles', angle: -90, position: 'insideLeft' }} />
-              <Tooltip />
-              <Line 
-                type="monotone" 
-                dataKey="avg_battery_discharge" 
-                stroke={colors.secondary}
-                strokeWidth={2}
-              />
-            </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </Grid>
-              </Grid>
-
+        <div>
+            {batteryChart && (
+                <HighchartsReact
+                    highcharts={Highcharts}
+                    options={batteryChart}
+                />
+            )}
+        </div>
               <Modal
           title="Inactive Devices"
           open={showInactiveDevices}
@@ -456,6 +474,7 @@ const Dashboard = () => {
           </Box>
         );
       };
+
 
 
 export default Dashboard;

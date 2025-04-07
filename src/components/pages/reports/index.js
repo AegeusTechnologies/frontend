@@ -1,214 +1,375 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  Typography, 
+  Select, 
+  MenuItem, 
+  FormControl, 
+  InputLabel, 
+  Button, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper,
+  Container,
+  Box,
+  CircularProgress,
+  Grid,
+  Chip,
+  Alert,
+  Tooltip,
+  Divider
+} from '@mui/material';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import RobotIcon from '@mui/icons-material/SmartToy';
 import axios from 'axios';
-import { Download } from 'lucide-react'; // Adding download icon for better UX
-import classNames from 'classnames';
-import log from 'loglevel';
+import { message, DatePicker } from 'antd';
+const { RangePicker } = DatePicker;
 
-const RobotPerformanceTable = () => {
-  const [performanceData, setPerformanceData] = useState({
-    individualDevices: [],
-    overallSummary: null
-  });
-  const [timeframe, setTimeframe] = useState('daily');
-  const [isDownloading, setIsDownloading] = useState(false);
+const RobotReportDashboard = () => {
+  const [reportType, setReportType] = useState('day');
+  const [reportData, setReportData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [dateRange, setDateRange] = useState([null, null]);
+  const [error, setError] = useState(null);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
 
-  // Create axios instance with proper base URL
-  const api = axios.create({
-    baseURL: process.env.REACT_APP_BACKEND_URL,
-    responseType: 'json'
-  });
-
-  useEffect(() => {
-    const fetchPerformanceData = async () => {
-      try {
-        // Reset state before fetching new data
-        setPerformanceData({
-          individualDevices: [],
-          overallSummary: null
-        });
-        
-        const validTimeframes = ['daily', 'monthly', 'yearly'];
-        if (!validTimeframes.includes(timeframe)) {
-          throw new Error(`Invalid timeframe: ${timeframe}`);
-        }
-        const response = await api.get(`/${timeframe}-report`);
-        
-        // Add additional logging to see the structure
-        console.log(`${timeframe} response structure:`, JSON.stringify(response.data, null, 2));
-        
-        setPerformanceData(response.data);
-      } catch (error) {
-        console.error('Error fetching performance data:', error);
-      }
-
-      
-    };
-  
-    fetchPerformanceData();
-  }, [timeframe]);
-
-
-
-  const handleDownload = async () => {
-    setIsDownloading(true);
+  const fetchReportByRange = async (dates) => {
+    setIsLoading(true);
+    setError(null);
     try {
-      // Make sure to use the correct endpoint
-      const response = await axios({
-        url: `${process.env.REACT_APP_BACKEND_URL}/download-report/${timeframe}`,
-        method: 'GET',
-        responseType: 'blob', // Important for file downloads
+      const [start, end] = dates;
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/robot-cleaning-report`, {
+        startDate: start.format('YYYY-MM-DD'),
+        endDate: end.format('YYYY-MM-DD')
       });
 
-      // Create a blob from the response data
-      const blob = new Blob([response.data], { 
-        type: response.headers['content-type'] 
-      });
+      const data = response.data;
+
+      if (data.success) {
+        setReportData(data);
+      } else {
+        setError('Invalid data format received from server');
+      }
+    } catch (error) {
+      setError(`Error fetching report: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDateRangeChange = (dates) => {
+    if (dates) {
+      setDateRange(dates);
+      fetchReportByRange(dates);
+    }
+  };
+
+  const fetchReportData = async (type) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await axios.post(`http://localhost:5002/api/report/${type}`);
       
-      // Create a URL for the blob
-      const url = window.URL.createObjectURL(blob);
+      const data = response.data;
+      if (data.success) {
+        setReportData(data);
+      } else {
+        setError('Invalid data format received from server');
+      }
+    } catch (error) {
+      setError(`Error fetching report: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Download report as CSV - Fixed to show total panels cleaned only once
+  const downloadReport = () => {
+    if (!reportData) return;
+
+    try {
+      // Prepare CSV content
+      const headers = ['Robot Name', 'Panels Cleaned', 'Contribution %'];
+      let csvRows = reportData.robots.map(robot => [
+        robot.robotName,
+        robot.totalPanelsCleaned,
+        robot.contributionPercentage
+      ]);
       
-      // Create temporary link element
+      // Add a total summary row at the end
+      csvRows.push(['', '', '','']);  // Empty row as separator
+      csvRows.push(['Total Panels Cleaned', reportData.totalPanelsCleaned]);
+
+      // Create CSV string
+      const csvContent = [
+        headers.join(','),
+        ...csvRows.map(row => row.join(','))
+      ].join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${timeframe}_report.csv`);
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
       
-      // Append to document, click, and clean up
+      // Include period information in filename
+      const periodInfo = reportData.year || reportData.month || 'current';
+      link.setAttribute('download', `robot_report_${periodInfo}.csv`);
+      
+      link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      // Clean up the blob URL
-      window.URL.revokeObjectURL(url);
+      // Show success message
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3000);
     } catch (error) {
-      console.error('Download error:', error.message, error.response ? error.response.status : '');
-      alert(`Failed to download the report. Error: ${error.message}. Please try again.`);
-    } finally {
-      setIsDownloading(false);
+      setError(`Error downloading report: ${error.message}`);
     }
   };
-  const formatDate = (dateValue, timeframe) => {
-    try {
-      // First check if the column exists directly
-      const dateKeyMap = {
-        'daily': 'day',
-        'monthly': 'month_start',
-        'yearly': 'year_start'
-      };
-      
-      const dateKey = dateKeyMap[timeframe];
-      
-      // Try direct access first, then try as a string key
-      let dateString = dateValue[dateKey];
-      
-      if (!dateString) {
-        console.log('Date value missing:', dateValue, 'for key:', dateKey);
-        return 'No date available';
-      }
-      
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-IN');
-    } catch (error) {
-      console.error('Date parsing error:', error, dateValue);
-      return 'Error displaying date';
+
+  // Fetch data on component mount and when report type changes
+  useEffect(() => {
+    fetchReportData(reportType);
+  }, [reportType]);
+
+  // Format period text based on available data
+  const getPeriodText = () => {
+    if (!reportData) return 'Current Period';
+    
+    if (reportData.year) return `Year: ${reportData.year}`;
+    if (reportData.month) {
+      const date = new Date(reportData.month);
+      return `Month: ${date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}`;
     }
+    if (reportData.day) {
+      const date = new Date(reportData.day);
+      return `Day: ${date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+    }
+    
+    return 'Current Period';
   };
+
+  // Calculate highest performing robot
+  const getTopPerformer = () => {
+    if (!reportData || !reportData.robots || reportData.robots.length === 0) return null;
+    
+    return reportData.robots.reduce((max, robot) => 
+      parseInt(robot.totalPanelsCleaned) > parseInt(max.totalPanelsCleaned) ? robot : max, 
+      reportData.robots[0]
+    );
+  }
+
   return (
-    <div className="container mx-auto p-4">
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex space-x-2">
-          <button 
-            className={`px-4 py-2 rounded transition-colors duration-200 ${
-              timeframe === 'daily' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'
-            }`}
-            onClick={() => setTimeframe('daily')}
-          >
-            daily
-          </button>
-          <button 
-            className={`px-4 py-2 rounded transition-colors duration-200 ${
-              timeframe === 'monthly' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'
-            }`}
-            onClick={() => setTimeframe('monthly')}
-          >
-            Monthly
-          </button>
-          <button 
-            className={`px-4 py-2 rounded transition-colors duration-200 ${
-              timeframe === 'yearly' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'
-            }`}
-            onClick={() => setTimeframe('yearly')}
-          >
-            Yearly
-          </button>
-        </div>
-        <button 
-          className={classNames(
-            'bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center space-x-2 transition-colors duration-200',
-            { 'opacity-75 cursor-not-allowed': isDownloading }
+    <Container maxWidth="lg">
+      <Card sx={{ mt: 4, mb: 4, borderRadius: 3, boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)', overflow: 'visible' }}>
+        <CardHeader
+          title={
+            <Box sx={{ mb: 1 }}>
+              <Typography variant="h4" color="primary" fontWeight="600">
+                <RobotIcon sx={{ mr: 1, verticalAlign: 'bottom' }} />
+                Robot Cleaning Report
+              </Typography>
+              <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 0.5 }}>
+                View and analyze robot cleaning performance
+              </Typography>
+            </Box>
+          }
+        />
+        
+        <Divider />
+        
+        <Box sx={{ px: 3, py: 2, backgroundColor: '#f9f9f9' }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth variant="outlined" size="small">
+                <InputLabel>Report Type</InputLabel>
+                <Select
+                  value={reportType}
+                  label="Report Type"
+                  onChange={(e) => setReportType(e.target.value)}
+                  startAdornment={<BarChartIcon sx={{ mr: 1, color: '#666' }} />}
+                >
+                  <MenuItem value="yearly">Yearly</MenuItem>
+                  <MenuItem value="monthly">Monthly</MenuItem>
+                  <MenuItem value="day">Daily</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <CalendarTodayIcon sx={{ mr: 1, color: '#666' }} />
+                <RangePicker 
+                  onChange={handleDateRangeChange}
+                  value={dateRange}
+                  format="YYYY-MM-DD"
+                  style={{ width: '100%' }}
+                />
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={3}>
+              <Tooltip title="Download report as CSV file">
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={downloadReport}
+                  disabled={!reportData || isLoading}
+                  startIcon={<FileDownloadIcon />}
+                  sx={{
+                    backgroundColor: '#2e7d32',
+                    '&:hover': {
+                      backgroundColor: '#1b5e20',
+                    },
+                    '&:disabled': {
+                      backgroundColor: '#e0e0e0',
+                    },
+                  }}
+                >
+                  Export Report
+                </Button>
+              </Tooltip>
+            </Grid>
+          </Grid>
+        </Box>
+        
+        <CardContent sx={{ pt: 3 }}>
+          {downloadSuccess && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              Report downloaded successfully!
+            </Alert>
           )}
-          onClick={handleDownload}
-          disabled={isDownloading}
-        >
-          <Download size={20} />
-          <span>
-            {isDownloading ? 'Downloading...' : `Download ${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Report`}
-          </span>
-        </button>
-      </div>
-
-      {performanceData.overallSummary && (
-        <div className="bg-gray-100 p-4 rounded mb-4">
-          <h2 className="text-xl font-bold mb-2">Overall Summary</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="font-semibold">Total Robots</p>
-              <p>{performanceData.overallSummary.total_robots}</p>
-            </div>
-            <div>
-              <p className="font-semibold">Total Panels Cleaned</p>
-              <p>{performanceData.overallSummary.overall_total_panels_cleaned}</p>
-            </div>
-            <div>
-              <p className="font-semibold">Avg Battery Discharge Cycles</p>
-              <p>{performanceData.overallSummary.overall_avg_battery_discharge}%</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="overflow-x-auto rounded-lg shadow">
-        <table className="w-full bg-white">
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="p-3 text-left font-semibold">Device ID</th>
-              <th className="p-3 text-left font-semibold">Total Panels Cleaned</th>
-              <th className="p-3 text-left font-semibold">Avg Battery Discharge Cycles</th>
-              <th className="p-3 text-left font-semibold">
-                {timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Start
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {performanceData.individualDevices.map((device, index) => (
-              <tr 
-                key={device.device_id} 
-                className={`border-b transition-colors duration-200 hover:bg-gray-50 ${
-                  index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                }`}
-              >
-              <td className="p-3">{device.device_name}</td>
-              <td className="p-3">{device.total_panels_cleaned}</td>
-              <td className="p-3">{device.avg_battery_discharge}%</td>
-              <td className="p-3">{formatDate(device, timeframe)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
+          
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+          
+          {isLoading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" p={6}>
+              <CircularProgress color="primary" />
+            </Box>
+          ) : reportData ? (
+            <>
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={12} md={4}>
+                  <Paper sx={{ p: 2, borderRadius: 2, backgroundColor: '#f3f8ff', height: '100%' }}>
+                    <Typography variant="subtitle2" color="text.secondary">TOTAL PANELS CLEANED</Typography>
+                    <Typography variant="h4" fontWeight="bold" color="#1565c0" sx={{ mt: 1 }}>
+                      {reportData.totalPanelsCleaned.toLocaleString()}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      Period: {getPeriodText()}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                
+                <Grid item xs={12} md={4}>
+                  <Paper sx={{ p: 2, borderRadius: 2, backgroundColor: '#f5fff5', height: '100%' }}>
+                    <Typography variant="subtitle2" color="text.secondary">ACTIVE ROBOTS</Typography>
+                    <Typography variant="h4" fontWeight="bold" color="#2e7d32" sx={{ mt: 1 }}>
+                      {reportData.robots.length}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      Working together to clean panels
+                    </Typography>
+                  </Paper>
+                </Grid>
+                
+                {getTopPerformer() && (
+                  <Grid item xs={12} md={4}>
+                    <Paper sx={{ p: 2, borderRadius: 2, backgroundColor: '#fffcf0', height: '100%' }}>
+                      <Typography variant="subtitle2" color="text.secondary">TOP PERFORMER</Typography>
+                      <Typography variant="h4" fontWeight="bold" color="#ed6c02" sx={{ mt: 1 }}>
+                        {getTopPerformer().robotName}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        Cleaned {getTopPerformer().totalPanelsCleaned.toLocaleString()} panels ({getTopPerformer().contributionPercentage})
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                )}
+              </Grid>
+              
+              <Typography variant="h6" sx={{ mb: 2 }} color="text.primary">
+                Performance Breakdown
+              </Typography>
+              
+              <TableContainer component={Paper} sx={{ boxShadow: '0px 3px 10px rgba(0, 0, 0, 0.05)', borderRadius: 2 }}>
+                <Table aria-label="robot cleaning report table">
+                  <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>Robot Name</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', color: '#333' }} align="right">Panels Cleaned</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', color: '#333' }} align="right">Contribution</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', color: '#333' }} align="center">Performance</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {reportData.robots.map((robot, index) => (
+                      <TableRow key={index} hover>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <RobotIcon sx={{ mr: 1, color: '#757575' }} />
+                            {robot.robotName}
+                          </Box>
+                        </TableCell>
+                        <TableCell align="right">{robot.totalPanelsCleaned.toLocaleString()}</TableCell>
+                        <TableCell align="right">
+                          <Chip 
+                            label={robot.contributionPercentage} 
+                            size="small" 
+                            sx={{ 
+                              backgroundColor: parseFloat(robot.contributionPercentage) > 30 ? '#e3f2fd' : '#f5f5f5',
+                              color: parseFloat(robot.contributionPercentage) > 30 ? '#0d47a1' : 'inherit',
+                              fontWeight: parseFloat(robot.contributionPercentage) > 30 ? 'bold' : 'normal'
+                            }} 
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box sx={{ 
+                            width: '100%', 
+                            height: 8, 
+                            backgroundColor: '#f0f0f0', 
+                            borderRadius: 4,
+                            overflow: 'hidden'
+                          }}>
+                            <Box sx={{ 
+                              height: '100%', 
+                              width: `${parseFloat(robot.contributionPercentage)}%`, 
+                              backgroundColor: parseFloat(robot.contributionPercentage) > 30 ? '#1976d2' : '#90caf9',
+                              borderRadius: 4
+                            }} />
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          ) : (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Typography variant="body1" color="text.secondary">
+                No report data available. Please select a different time period.
+              </Typography>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+    </Container>
   );
 };
 
-export default RobotPerformanceTable;
+export default RobotReportDashboard;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Input, Table, Modal, Space, Badge } from 'antd';
+import { Button, Input, Table, Modal, Space, Badge, message } from 'antd';
 import { 
   ClockCircleOutlined, 
   SearchOutlined, 
@@ -96,9 +96,9 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
     
     try {
       await toggleDeviceDownlink(devEui, state);
-      alert(`Command ${state} sent successfully`);
+      message.success(`Command ${state} sent successfully`);
     } catch (error) {
-      alert(`Failed to send command: ${error.message}`);
+      message.error(`Failed to send command: ${error.message}`);
     }
   };
 
@@ -348,6 +348,7 @@ async function toggleDeviceDownlink(devEui, state) {
     reboot: "BQ==", // Reboot command
     "06": "Bg==", // Disable command
     "07": "Bw==", // Enable command
+    
   };
 
   const response = await fetch(`${API_BASE_URL}/devices/${devEui}/queue`, {
@@ -357,9 +358,10 @@ async function toggleDeviceDownlink(devEui, state) {
     },
     body: JSON.stringify({
       queueItem: {
-        data: dataMap[state],
+        data: dataMap[state],//"Ag=="
         fCnt: 0,
         fPort: 1,
+        confirmed: true,
       },
     }),
   });
@@ -367,6 +369,9 @@ async function toggleDeviceDownlink(devEui, state) {
   if (!response.ok) {
     throw new Error("Failed to send command");
   }
+
+  const responseData = await response.json();
+  message.success(`Command sent successfully. ID: ${responseData.id}`);
 }
 
 export default Devices;

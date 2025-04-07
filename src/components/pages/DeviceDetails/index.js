@@ -122,19 +122,28 @@ function DeviceDetails() {
       }
 
       setRetryCount(0);
+      const rawData = await response.json();
+      // Parse the JSON string if it's a string
+    const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+    
+    // Extract values from the correct nested structure
+    const rssi = data.rxInfo?.[0]?.rssi ?? 'N/A';
+    const deviceName = data.deviceInfo?.deviceName ?? 'N/A';
+    
+    const processedData = {
+      ...generateDefaultData(),
+      ...(data.object || {}),  // Note: using 'object' instead of 'Object'
+      CH1: deviceName,
+      CH3: rssi
+    };
 
-      const data = await response.json();
-      const rssi = data.rssi;
-      const deviceName = data.deviceName;
-      
-      const processedData = {
-        ...generateDefaultData(),
-        ...(data.data || {}),
-        CH1: deviceName || 'N/A',  // Override CH1 with deviceName
-        CH3: rssi || 'N/A'        // Override CH3 with rssi
-      };
+    // Add units and format specific values
+    if (processedData.CH4) processedData.CH4 = `${processedData.CH4}%`; // Battery SOC
+    if (processedData.CH5) processedData.CH5 = `${processedData.CH5}V`; // Battery Voltage
+    if (processedData.CH17) processedData.CH17 = `${processedData.CH17}°C`; // Temperature
+    if (processedData.CH3) processedData.CH3 = `${processedData.CH3} dBm`; // RSSI
 
-      setDeviceData(processedData);
+    setDeviceData(processedData);
       
       if (isManualRefresh) {
         setLastRefreshAttempt(new Date().toLocaleString());
@@ -175,6 +184,7 @@ function DeviceDetails() {
             data: "AQ==",
             fCnt: 0,
             fPort: 1,
+            confirmed: true
           },
         }),
       });
