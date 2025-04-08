@@ -1,4 +1,3 @@
-// First, let's fix the MulticastGroup component to remove weather-related code and fix the scheduler
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -102,12 +101,11 @@ const MulticastGroup = () => {
       if (!data) throw new Error(`Unknown action: ${action}`);
 
       const response = await axios.post(`${API_BASE_URL}/triggerAll`, {
-        groupId: groupIds,  // Send the array of groupIds directly
-        data: data         // Send the action data
+        groupId: groupIds,
+        data: data
       });
 
       if (response.data.success) {
-        // Show success message with device counts
         const successCount = response.data.successfulDevices?.length || 0;
         const missingCount = Object.keys(response.data.missingDevices || {}).length;
           
@@ -141,12 +139,12 @@ const MulticastGroup = () => {
     }
   };
 
-  // Improved schedule handler
+  // Modified schedule handler that uses milliseconds timestamp
   const handleScheduleSubmit = async () => {
     try {
       setIsLoadingSchedule(true);
 
-      // Validate inputs before sending request
+      // Validate inputs
       if (!selectedGroups || selectedGroups.length === 0) {
         throw new Error('Please select at least one group');
       }
@@ -155,7 +153,6 @@ const MulticastGroup = () => {
         throw new Error('Please select a schedule time');
       }
 
-      // Show scheduling notification
       notification.info({
         message: 'Scheduling Task',
         description: 'Sending schedule request...',
@@ -163,37 +160,32 @@ const MulticastGroup = () => {
         duration: 2
       });
 
-      // Format time exactly as expected by the backend
-      const formattedTime = moment(scheduleTime).format('YYYY-MM-DD HH:mm:ss');
+      // Generate timestamp in milliseconds for the selected time
+      const timestampMs = scheduleTime.valueOf();
       
-      console.log("Sending schedule request with data:", {
-        groupId: selectedGroups,
-        scheduleTime: formattedTime
-      });
+      console.log("Selected time:", scheduleTime.format('YYYY-MM-DD HH:mm:ss'));
+      console.log("Sending timestamp (ms):", timestampMs);
 
+      // Send timestamp instead of formatted date string
       const response = await axios.post(`${API_BASE_URL}/schedule-task`, {
         groupId: selectedGroups,
-        scheduleTime: formattedTime
+        scheduleTimeMs: timestampMs // New property name to make it clear we're sending milliseconds
       });
 
-      // Update state with new task
       await fetchScheduledTasks();
 
-      // Show success notification
       notification.success({
         message: 'Task Scheduled',
-        description: `Task scheduled for ${formattedTime}`,
+        description: `Task scheduled for ${scheduleTime.format('YYYY-MM-DD HH:mm:ss')}`,
         duration: 4,
         key: 'schedule-success'
       });
 
-      // Close modal and reset selected time
+      // Reset selected time
       setScheduleTime(null);
 
     } catch (error) {
-      // Enhanced error handling
       if (error.message) {
-        // Client-side validation errors
         notification.error({
           message: 'Validation Error',
           description: error.message,
@@ -202,7 +194,6 @@ const MulticastGroup = () => {
         });
       }
       else if (error.response?.data?.error) {
-        // Server-side errors with messages
         notification.error({
           message: 'Cannot Schedule Downlink',
           description: error.response.data.error,
@@ -211,7 +202,6 @@ const MulticastGroup = () => {
         });
       }
       else {
-        // Unknown errors
         notification.error({
           message: 'Failed to Schedule',
           description: "An unexpected error occurred. Please try again.",
@@ -238,7 +228,6 @@ const MulticastGroup = () => {
       message.error(errorMessage);
       console.error('Cancel task error:', error);
     } finally {
-      // Always refresh the task list to ensure UI is in sync
       await fetchScheduledTasks();
     }
   };
