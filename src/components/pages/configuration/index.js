@@ -1,341 +1,146 @@
-import React, { useState, useEffect } from 'react';
-import { AlertCircle } from 'lucide-react';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  Checkbox, 
-  Button, 
-  FormControlLabel, 
-  TextField, 
-  Typography, 
-  Snackbar, 
-  CircularProgress, 
-  Alert, 
-  Box,
-  Divider
-} from '@mui/material';
-import axios from 'axios';
+import { useState, useEffect } from "react";
+import axios from "axios";
 
-const Configuration = ({ setHumidityThreshold, setRainThreshold, setWindSpeedThreshold }) => {
-  // Convert m/s to mph (Inline conversion logic)
-  const msToMph = (ms) => Math.round(ms * 2.237);
-
-  // Retrieve the settings from localStorage if available
-  const weatherConfig = JSON.parse(localStorage.getItem('weatherConfig')) || {};
-  const [humidity, setHumidity] = useState(weatherConfig.humidityThreshold || 85);
-  const [windSpeed, setWindSpeed] = useState(msToMph(weatherConfig.windSpeedThreshold) || 16); // Convert m/s to mph
-  const [rainEnabled, setRainEnabled] = useState(weatherConfig.rainEnabled || false);
-  
-
-  // States for weather fetching
-  const [currentWeather, setCurrentWeather] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [notification, setNotification] = useState('');
-
-  // this is for the task maneger
-
-  // Fetch current weather
-  const fetchWeather = async () => {
-    try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/gateway`);
-      const data = await response.json();
-      if (data && data.weather) {
-        setCurrentWeather({
-          ...data.weather,
-          windSpeedMph: msToMph(data.weather.windSpeed),  // Convert windSpeed from m/s to mph
-          dewPoint: calculateDewPoint(data.weather.temperature, data.weather.humidity),
-        });
-      }
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to fetch weather data');
-      setLoading(false);
-    }
-  };
-
-  // Calculate dew point
-  const calculateDewPoint = (tempC, relativeHumidity) => {
-    const a = 17.27;
-    const b = 237.7;
-    const gamma = ((a * tempC) / (b + tempC)) + Math.log(relativeHumidity / 100);
-    return Math.round((b * gamma) / (a - gamma) * 10) / 10;
-  };
-
-  // Send the updated thresholds to the backend
-  const sendThresholdToBackend = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/update-threshold`, {
-        windSpeedThreshold: windSpeed,     // Send wind speed in mph
-        humidityThreshold: humidity,       // Send humidity as percentage
-        rainEnabled: rainEnabled,          // Just send boolean flag instead of threshold
-      });
-      
-      console.log('Threshold updated successfully:', response.data);
-      setNotification('Thresholds updated successfully!');
-      return true;
-      
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update thresholds';
-      setError(errorMessage);
-      console.error('Error updating thresholds:', error);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => {
-    sendThresholdToBackend();
-  }, 3000); 
-
-  // Handle saving the configuration
-  const handleSave = () => {
-    const settings = {
-      humidityThreshold: humidity,
-      windSpeedThreshold: windSpeed,
-      rainEnabled: rainEnabled,
-    };
-
-    // Save to localStorage
-    localStorage.setItem('weatherConfig', JSON.stringify(settings));
-    
-    // Update the parent component state with new thresholds
-    setHumidityThreshold(humidity);
-    setWindSpeedThreshold(windSpeed);
-    setRainThreshold(rainEnabled ? 0.1 : 999);
-
-    setNotification('Configuration saved successfully!');
-    
-    // Send the thresholds to the backend
-    sendThresholdToBackend();
-  };
+const Configuration = () => {
+  const [thresholdData, setThresholdData] = useState({
+    windSpeed: "",
+    temperature: "",
+    humidity: "",
+    rain_gauge: "",
+    windDirection: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetchWeather();
-    const interval = setInterval(fetchWeather, 3000);  // Update weather every 30 seconds
-    return () => clearInterval(interval);  // Cleanup interval on component unmount
+    fetchThresholdData();
   }, []);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const fetchThresholdData = async () => {
+    try {
+      const response = await axios.get("http://localhost:5002/api/weather-thresold");
+      if (response.data.success) {
+        setThresholdData(response.data.result.data);
+      }
+    } catch (error) {
+      setMessage("Error fetching data");
+    }
+  };
 
-  if (error) {
-    return (
-      <Box m={2}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
-  }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setThresholdData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
-  if (!currentWeather) {
-    return (
-      <Box m={2}>
-        <Typography variant="body1">No weather data available</Typography>
-      </Box>
-    );
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const method = thresholdData.id ? "put" : "post";
+      const response = await axios[method]("http://localhost:5002/api/weather-thresold", thresholdData);
+      if (response.data.success) {
+        setMessage(response.data.result.message);
+        if (!thresholdData.id) {
+          setThresholdData(response.data.result.data);
+        }
+      }
+    } catch (error) {
+      setMessage("Error saving data");
+    }
+    setLoading(false);
+  };
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 4, md: 6 }, maxWidth: '100%', mx: 'auto' }}>
-      <Snackbar 
-        open={Boolean(notification)} 
-        autoHideDuration={3000} 
-        onClose={() => setNotification('')}
-      >
-        <Alert onClose={() => setNotification('')} severity="success">
-          {notification}
-        </Alert>
-      </Snackbar>
-
-      <Card>
-        <CardHeader
-          title={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="h5">Weather Configuration</Typography>
-              {error && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <AlertCircle sx={{ width: 20, height: 20, color: 'error.main' }} />
-                  <Typography variant="body2" color="error">
-                    {error}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          }
-        />
-        <CardContent>
-          <Box sx={{ 
-            mb: 3, 
-            p: 2, 
-            bgcolor: 'grey.50', 
-            borderRadius: 1,
-            border: 1,
-            borderColor: 'grey.200'
-          }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Current Status
-            </Typography>
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: { 
-                xs: '1fr', 
-                sm: '1fr 1fr',
-                md: 'repeat(3, 1fr)',
-                lg: 'repeat(5, 1fr)' 
-              },
-              gap: 2
-            }}>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Humidity
-                </Typography>
-                <Typography 
-                  variant="h6" 
-                  color={currentWeather.humidity > humidity ? 'error' : 'success'}
-                >
-                  {currentWeather.humidity}%
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Wind Speed
-                </Typography>
-                <Typography 
-                  variant="h6" 
-                  color={currentWeather.windSpeedMph > windSpeed ? 'error' : 'success'}
-                >
-                  {currentWeather.windSpeedMph} mph
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Rain
-                </Typography>
-                <Typography 
-                  variant="h6" 
-                  color={currentWeather.rain > 0 && rainEnabled ? 'error' : 'success'}
-                >
-                  {currentWeather.rain} mm
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Dew Point
-                </Typography>
-                <Typography variant="h6">
-                  {currentWeather.dewPoint}°C
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Stow Angle
-                </Typography>
-                <Typography variant="h6">
-                  30°
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-
-          <Box sx={{ 
-            mb: 3, 
-            p: 2, 
-            bgcolor: 'info.50', 
-            borderRadius: 1,
-            border: 1,
-            borderColor: 'info.200'
-          }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Current Thresholds
-            </Typography>
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, 
-              gap: 2
-            }}>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Humidity Threshold
-                </Typography>
-                <Typography variant="h6">
-                  {localStorage.getItem('humidityThreshold')}%
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Wind Speed Threshold
-                </Typography>
-                <Typography variant="h6">
-                  {localStorage.getItem('windSpeedThreshold')} mph
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Rain Detection
-                </Typography>
-                <Typography variant="h6">
-                  {rainEnabled ? 'Enabled' : 'Disabled'}
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-
-          <Divider sx={{ my: 3 }} />
-
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, 
-              gap: 2 
-            }}>
-              <TextField
-                label="Humidity Threshold (%)"
-                type="number"
-                value={humidity}
-                onChange={(e) => setHumidity(Math.max(0, Math.min(100, e.target.value)))}
-                fullWidth
-                inputProps={{ min: 0, max: 100 }}
-              />
-              <TextField
-                label="Wind Speed Threshold (mph)"
-                type="number"
-                value={windSpeed}
-                onChange={(e) => setWindSpeed(Math.max(0, e.target.value))}
-                fullWidth
-                inputProps={{ min: 0 }}
-              />
-            </Box>
-
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={rainEnabled}
-                  onChange={(e) => setRainEnabled(e.target.checked)}
-                  color="primary"
-                />
-              }
-              label="Disable robots when any rain is detected"
+    <div className="min-h-screen bg-gray-100 py-8 px-4">
+      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Weather Threshold Configuration</h2>
+        {message && <div className="mb-4 p-3 bg-blue-100 text-blue-700 rounded">{message}</div>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Wind Speed (m/s)</label>
+            <input
+              type="number"
+              name="windSpeed"
+              value={thresholdData.windSpeed}
+              onChange={handleInputChange}
+              step="0.1"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Temperature (°C)</label>
+            <input
+              type="number"
+              name="temperature"
+              value={thresholdData.temperature}
+              onChange={handleInputChange}
+              step="0.1"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-            <Button 
-              onClick={handleSave} 
-              variant="contained" 
-              color="primary" 
-              sx={{ mt: 2 }}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Humidity (%)</label>
+            <input
+              type="number"
+              name="humidity"
+              value={thresholdData.humidity}
+              onChange={handleInputChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Rain Gauge (mm)</label>
+            <input
+              type="number"
+              name="rain_gauge"
+              value={thresholdData.rain_gauge}
+              onChange={handleInputChange}
+              step="0.1"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Wind Direction</label>
+            <select
+              name="windDirection"
+              value={thresholdData.windDirection}
+              onChange={handleInputChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              Save Configuration
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-    </Box>
+              <option value="">Select Direction</option>
+              <option value="N">North</option>
+              <option value="NE">North East</option>
+              <option value="E">East</option>
+              <option value="SE">South East</option>
+              <option value="S">South</option>
+              <option value="SW">South West</option>
+              <option value="W">West</option>
+              <option value="NW">North West</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-blue-300"
+          >
+            {loading ? "Saving..." : "Save Thresholds"}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 };
 

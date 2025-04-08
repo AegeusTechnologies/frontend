@@ -85,12 +85,18 @@ const RobotStatus = () => {
     setIsRefreshing(prev => ({ ...prev, [id]: true }));
     
     try {
-      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/multicast-groups/${id}/queue`, {
-        queueItem: { data: "AQ==", fCnt: 0, fPort: 1,  confirmed: true,}
-      });
+
+
+      console.log("Refreshing group..........................................:", [id]);
+         const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/triggerAll`, {
+         
+              groupId:[id],  // Send the array of groupIds directly
+              data: "AQ=="         // Send the action data
+            });
+
       
       if (response.data) {
-        message.success(`Successfully scheduled. Frame counter: ${response.data.fCnt}`);
+        message.success(`Successfully sent command to group ${id}`);
       } else {
         message.error("Failed to schedule the group, ChirpStack didn't receive the command");
       }
