@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Input, Table, Modal, Space, Badge, message } from 'antd';
+import { Button, Input, Table, Modal, Space, Badge, message, List, Typography, Tag, Card, Avatar } from 'antd';
 import { 
   ClockCircleOutlined, 
   SearchOutlined, 
-  PoweroffOutlined 
+  PoweroffOutlined, 
+  MessageOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  WifiOutlined, RobotOutlined
 } from "@ant-design/icons";
 import { useLocalStorageforall } from '../../useLocalStorage';
 
@@ -14,13 +18,42 @@ const ITEMS_PER_PAGE = 10;
 function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [messageEvent,setMessageEvent]= useState([]);
   const [weatherWarnings, setWeatherWarnings] = useState([]);
   const [buttonsDisabled, setButtonsDisabled] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [disabledDevices, setDisabledDevices] = useLocalStorageforall('disabledDevices', [])
   const [isDisabledModalVisible, setIsDisabledModalVisible] = useState(false);
+  const [messageModelVisible, setMessageModalVisible] = useState(false);
+  const [count,setCount]=useState(0);
   const navigate = useNavigate();
 
+
+  const getStatusColor = (status) => {
+    const statusMap = {
+      'success': 'success',
+      'error': 'error',
+      'pending': 'warning',
+      'processing': 'processing',
+      'default': 'default'
+    };
+    
+    return statusMap[status.toLowerCase()] || 'default';
+  };
+
+
+  const clearAllMessages = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/events/clear`);
+    } catch (error) {
+      console.error('Failed to clear messages:', error);
+    }
+  };
+
+  useEffect(() => {
+    const interval = setInterval(clearAllMessages, 20 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
 
   // Load disabled devices from localStorage on component mount
@@ -31,13 +64,34 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
     }
   }, []);
 
+ 
+  
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/events/count`);
+        if (response.ok) {
+          const data = await response.json();
+          setCount(data.count);
+        }
+      } catch (error) {
+        console.error('Failed to fetch count:', error);
+      }
+    };
+  
+    fetchCount();
+    
+    const interval = setInterval(fetchCount, 30000); 
+    return () => clearInterval(interval);
+  }, []); 
+
   // Save disabled devices to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('disabledDevices', JSON.stringify(disabledDevices));
   }, [disabledDevices]);
 
-  useEffect(() => {
-    async function fetchData() {
+     async function fetchData() {
       try {
         // Fetch weather data
         const weatherResponse = await fetch(`${API_BASE_URL}/gateway`);
@@ -59,13 +113,10 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
           if (windSpeedMph > Number(windSpeedThreshold)) {
             warnings.push(`Wind speed (${windSpeedMph.toFixed(2)}mph) exceeds threshold (${windSpeedThreshold}mph)`);
           }
-          
-  
 
           setWeatherWarnings(warnings);
           setButtonsDisabled(warnings.length > 0);
         }
-
 
         // Fetch devices data
         const response = await fetch(`${API_BASE_URL}/devices`);
@@ -80,11 +131,31 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
       }
     }
 
+  useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [humidityThreshold, rainThreshold, windSpeedThreshold]);
 
+
+  useEffect(() => {
+    const fetchMessageEvents = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/events`);
+        if (response.ok) {
+          const data = await response.json();
+          setMessageEvent(data); 
+        }
+      } catch (error) {
+        console.error('Failed to fetch message events:', error);
+      }
+    };
+  
+    fetchMessageEvents();
+  
+    const interval = setInterval(fetchMessageEvents, 30000);
+    return () => clearInterval(interval);
+  }, []);
  
 
   const handleToggleDevice = async (devEui, state) => {
@@ -282,6 +353,15 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
           >
             View Disabled Robots
           </Button>
+
+          <Button
+  type="primary"
+  icon={<MessageOutlined />}
+  onClick={() => setMessageModalVisible(true)}
+  className="hover:scale-105 transform transition-all duration-300"
+>
+  Messages ({count})
+</Button>
         </Space>
       </div>
 
@@ -335,6 +415,83 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
           pagination={false}
         />
       </Modal>
+
+
+      <Modal
+      title={
+        <Space>
+          <RobotOutlined style={{ fontSize: '18px' }} />
+          <Typography.Title level={4} style={{ margin: 0 }}>
+            Robot Messages
+          </Typography.Title>
+
+        </Space>
+      }
+      open={messageModelVisible}
+      onCancel={() => setMessageModalVisible(false)}
+      footer={null}
+      width={800}
+      className="robot-messages-modal"
+    >
+      <List
+        dataSource={messageEvent}
+        renderItem={(item) => (
+          <List.Item>
+            <Card 
+              style={{ width: '100%' }} 
+              hoverable
+              className="message-card"
+              bodyStyle={{ padding: '16px' }}
+            >
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Space align="center">
+                  <Avatar icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff' }} />
+                  <Typography.Text strong>{item.robotName}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                    {new Date(item.timestamp).toLocaleString()}
+                  </Typography.Text>
+                </Space>
+                
+                <Space wrap style={{ marginTop: '8px' }}>
+                  {item.acknowledged !== undefined && (
+                    <Tag color={item.acknowledged ? 'success' : 'error'} icon={item.acknowledged ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
+                      {item.acknowledged ? 'Acknowledged' : 'Not Acknowledged'}
+                    </Tag>
+                  )}
+                  
+                  {item.Gatewayreceived && (
+                    <Tag color="processing" icon={<WifiOutlined />}>
+                      Gateway Received: {item.Gatewayreceived}
+                    </Tag>
+                  )}
+                  
+                  {item.status && (
+                    <Tag color={getStatusColor(item.status)} icon={<ClockCircleOutlined />}>
+                      Status: {item.status}
+                    </Tag>
+                  )}
+                </Space>
+                
+                {item.message && (
+                  <Typography.Paragraph className="message-content" style={{ marginTop: '8px' }}>
+                    {item.message}
+                  </Typography.Paragraph>
+                )}
+              </Space>
+            </Card>
+          </List.Item>
+        )}
+        pagination={{
+          pageSize: 5,
+          showSizeChanger: true,
+          pageSizeOptions: ['5', '10', '20'],
+          showTotal: (total) => `Total ${total} messages`,
+          showQuickJumper: true,
+          position: 'bottom',
+          style: { marginTop: '16px', textAlign: 'right' }
+        }}
+      />
+    </Modal>
     </div>
   );
 }
