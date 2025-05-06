@@ -1,13 +1,81 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, Typography, Space, Button, Tooltip, Spin, message } from 'antd';
+import { Card, Typography, Space, Button, Tooltip, Spin, message, Tabs } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
+const { TabPane } = Tabs;
+
+// Single Group Dashboard Component
+const RobotStatusDashboard = ({ groupId }) => {
+  const [devices, setDevices] = useState([]);
+  const [deviceStatus, setDeviceStatus] = useState({});
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchDevicesAndStatus = async () => {
+      try {
+        // 1. Get all devices in the group
+        const groupRes = await axios.get(`/groups/${groupId}/devices`);
+        const deviceList = groupRes.data;
+        setDevices(deviceList);
+        
+        // 2. For each device, fetch its latest data
+        const statusMap = {};
+        await Promise.all(
+          deviceList.map(async (device) => {
+            try {
+              const statusRes = await axios.get(`/devices/${device.devEui}/data?limit=1`);
+              const latest = statusRes.data?.data?.[0];
+              statusMap[device.devEui] = latest?.payload?.status || 'unknown';
+            } catch (err) {
+              console.error(`Error fetching data for device ${device.devEui}`, err);
+              statusMap[device.devEui] = 'error';
+            }
+          })
+        );
+        setDeviceStatus(statusMap);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching group devices:', error);
+        setLoading(false);
+      }
+    };
+    
+    if (groupId) {
+      fetchDevicesAndStatus();
+    }
+  }, [groupId]);
+
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-semibold mb-4">Robot Status (Group ID: {groupId})</h2>
+      {loading ? (
+        <p>Loading device statuses...</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {devices.map((device) => (
+            <div
+              key={device.devEui}
+              className="border rounded-lg p-4 shadow-md"
+            >
+              <h3 className="font-bold text-lg">{device.name || device.devEui}</h3>
+              <p>Status: {deviceStatus[device.devEui]}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Main RobotStatus Component
 const RobotStatus = () => {
   const [groups, setGroups] = useState([]);
   const [deviceStatus, setDeviceStatus] = useState({});
   const [isRefreshing, setIsRefreshing] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+  const [activeGroupId, setActiveGroupId] = useState(null);
+  const [viewMode, setViewMode] = useState('overview'); // 'overview' or 'detailed'
   
   // Store active fetch requests to prevent race conditions
   const activeRequests = useRef({});
@@ -19,14 +87,21 @@ const RobotStatus = () => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/groupDevices`);
       if (response.data.success) {
-        setGroups(response.data.data);
+        const groupsData = response.data.data;
+        setGroups(groupsData);
+        
+        // Set the first group as active if we have groups and no active group
+        if (groupsData.length > 0 && !activeGroupId) {
+          setActiveGroupId(groupsData[0].groupInfo.id);
+        }
+        
         setIsLoading(false);
       }
     } catch (error) {
       console.error('Error fetching group data:', error);
       setIsLoading(false);
     }
-  }, []);
+  }, [activeGroupId]);
 
   // Optimized device data fetching function
   const fetchDeviceData = useCallback(async () => {
@@ -85,15 +160,10 @@ const RobotStatus = () => {
     setIsRefreshing(prev => ({ ...prev, [id]: true }));
     
     try {
-
-
-      console.log("Refreshing group..........................................:", [id]);
-         const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/triggerAll`, {
-         
-              groupId:[id],  // Send the array of groupIds directly
-              data: "AQ=="         // Send the action data
-            });
-
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/triggerAll`, {
+        groupId: [id],  // Send the array of groupIds directly
+        data: "AQ=="   // Send the action data
+      });
       
       if (response.data) {
         message.success(`Successfully sent command to group ${id}`);
@@ -107,6 +177,11 @@ const RobotStatus = () => {
       setIsRefreshing(prev => ({ ...prev, [id]: false }));
     }
   }, [isRefreshing]);
+
+  // Change view mode
+  const toggleViewMode = useCallback(() => {
+    setViewMode(prev => prev === 'overview' ? 'detailed' : 'overview');
+  }, []);
 
   // Fetch initial data once component mounts
   useEffect(() => {
@@ -142,6 +217,12 @@ const RobotStatus = () => {
     };
   }, [groups, isLoading, fetchDeviceData]);
 
+  // Render the detailed view for a specific group
+  const renderDetailedView = () => {
+    if (!activeGroupId) return <div>No group selected</div>;
+    return <RobotStatusDashboard groupId={activeGroupId} />;
+  };
+
   return (
     <div style={{ 
       display: 'flex', 
@@ -151,11 +232,34 @@ const RobotStatus = () => {
       width: '100%',
       margin: '0 auto'
     }}>
+      {/* View Mode Toggle */}
+      <div style={{ 
+        display: 'flex',
+        justifyContent: 'flex-end',
+        marginBottom: '16px'
+      }}>
+      
+      </div>
+
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}>
           <Spin size="large" />
         </div>
+      ) : viewMode === 'detailed' ? (
+        /* Detailed View */
+        <Tabs 
+          activeKey={activeGroupId?.toString()}
+          onChange={(key) => setActiveGroupId(key)}
+          type="card"
+        >
+          {groups.map((group) => (
+            <TabPane tab={group.groupInfo.name} key={group.groupInfo.id}>
+              <RobotStatusDashboard groupId={group.groupInfo.id} />
+            </TabPane>
+          ))}
+        </Tabs>
       ) : (
+        /* Overview (Original) View */
         groups.map((group) => (
           <Card
             key={group.groupInfo.id}
