@@ -1,157 +1,60 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, Typography, Space, Button, Tooltip, Spin, message, Tabs } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import { useState, useEffect, useCallback } from "react";
+import { Card, Button, Tooltip, Typography, Box, CircularProgress } from "@mui/material";
+import { Refresh as RefreshIcon } from "@mui/icons-material";
+import axios from "axios";
+import { message } from "antd";
 
-const { TabPane } = Tabs;
-
-// Single Group Dashboard Component
-const RobotStatusDashboard = ({ groupId }) => {
-  const [devices, setDevices] = useState([]);
-  const [deviceStatus, setDeviceStatus] = useState({});
+const RobotStatusDashboard = () => {
+  const [groupsData, setGroupsData] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  useEffect(() => {
-    const fetchDevicesAndStatus = async () => {
-      try {
-        // 1. Get all devices in the group
-        const groupRes = await axios.get(`/groups/${groupId}/devices`);
-        const deviceList = groupRes.data;
-        setDevices(deviceList);
-        
-        // 2. For each device, fetch its latest data
-        const statusMap = {};
-        await Promise.all(
-          deviceList.map(async (device) => {
-            try {
-              const statusRes = await axios.get(`/devices/${device.devEui}/data?limit=1`);
-              const latest = statusRes.data?.data?.[0];
-              statusMap[device.devEui] = latest?.payload?.status || 'unknown';
-            } catch (err) {
-              console.error(`Error fetching data for device ${device.devEui}`, err);
-              statusMap[device.devEui] = 'error';
-            }
-          })
-        );
-        setDeviceStatus(statusMap);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching group devices:', error);
-        setLoading(false);
-      }
-    };
-    
-    if (groupId) {
-      fetchDevicesAndStatus();
-    }
-  }, [groupId]);
-
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-semibold mb-4">Robot Status (Group ID: {groupId})</h2>
-      {loading ? (
-        <p>Loading device statuses...</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {devices.map((device) => (
-            <div
-              key={device.devEui}
-              className="border rounded-lg p-4 shadow-md"
-            >
-              <h3 className="font-bold text-lg">{device.name || device.devEui}</h3>
-              <p>Status: {deviceStatus[device.devEui]}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Main RobotStatus Component
-const RobotStatus = () => {
-  const [groups, setGroups] = useState([]);
   const [deviceStatus, setDeviceStatus] = useState({});
   const [isRefreshing, setIsRefreshing] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeGroupId, setActiveGroupId] = useState(null);
-  const [viewMode, setViewMode] = useState('overview'); // 'overview' or 'detailed'
-  
-  // Store active fetch requests to prevent race conditions
-  const activeRequests = useRef({});
-  // Store the polling interval ID for cleanup
-  const pollIntervalRef = useRef(null);
 
-  // Fetch group data - optimized to only run when needed
-  const fetchGroupData = useCallback(async () => {
+  // Fetch groups and devices data
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  const fetchAllData = async () => {
+    setLoading(true);
     try {
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/groupDevices`);
-      if (response.data.success) {
-        const groupsData = response.data.data;
-        setGroups(groupsData);
-        
-        // Set the first group as active if we have groups and no active group
-        if (groupsData.length > 0 && !activeGroupId) {
-          setActiveGroupId(groupsData[0].groupInfo.id);
-        }
-        
-        setIsLoading(false);
+      const response = await fetch("http://localhost:5002/api/Groupdevices");
+      const result = await response.json();
+      if (result.success) {
+        setGroupsData(result.data);
+        // Fetch status for each device
+        const allDevices = result.data.flatMap(group => 
+          group.devices.map(device => device.devEui)
+        );
+        fetchDeviceStatuses(allDevices);
       }
     } catch (error) {
-      console.error('Error fetching group data:', error);
-      setIsLoading(false);
+      console.error("Error fetching group data:", error);
+      message.error("Failed to load groups data");
+    } finally {
+      setLoading(false);
     }
-  }, [activeGroupId]);
+  };
 
-  // Optimized device data fetching function
-  const fetchDeviceData = useCallback(async () => {
-    // Get all unique device EUIs from all groups
-    const deviceEUIs = new Set();
-    groups.forEach(group => {
-      group.devices.slice(0, 50).forEach(device => {
-        deviceEUIs.add(device.devEui);
-      });
-    });
-
-    // Fetch data for each device in a batch if possible
-    const promises = Array.from(deviceEUIs).map(async (deviceEUI) => {
-      // Skip if there's already an active request for this device
-      if (activeRequests.current[deviceEUI]) return;
-      
-      // Mark this request as active
-      activeRequests.current[deviceEUI] = true;
-      
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/devices/${deviceEUI}/data`);
-        
-        // Check if device is active - assuming CH2 property indicates activity
-        const isActive = response.data?.object?.CH2 === 1;
-        
-        // Update the device status
-        setDeviceStatus(prev => ({
-          ...prev,
-          [deviceEUI]: isActive
-        }));
-      } catch (error) {
-        // Only log errors if they're not canceled requests
-        if (!axios.isCancel(error)) {
-          console.error(`Error fetching data for ${deviceEUI}:`, error);
-          
-          // Mark as inactive if there's an error
-          setDeviceStatus(prev => ({
-            ...prev,
-            [deviceEUI]: false
-          }));
+  // Fetch status for all devices
+  const fetchDeviceStatuses = async (deviceEuis) => {
+    const statusMap = {};
+    
+    await Promise.all(
+      deviceEuis.map(async (devEui) => {
+        try {
+          const response = await fetch(`http://localhost:5002/api/status/${devEui}`);
+          const result = await response.json();
+          statusMap[devEui] = result.status === "RUNNING";
+        } catch (error) {
+          console.error(`Error fetching status for device ${devEui}:`, error);
+          statusMap[devEui] = false; // Default to not running if error
         }
-      } finally {
-        // Clear the active request marker
-        delete activeRequests.current[deviceEUI];
-      }
-    });
+      })
+    );
 
-    // Wait for all requests to complete
-    await Promise.allSettled(promises);
-  }, [groups]);
+    setDeviceStatus(statusMap);
+  };
 
   // Handle group refresh with optimized error handling
   const handleRefresh = useCallback(async (id) => {
@@ -178,174 +81,85 @@ const RobotStatus = () => {
     }
   }, [isRefreshing]);
 
-  // Change view mode
-  const toggleViewMode = useCallback(() => {
-    setViewMode(prev => prev === 'overview' ? 'detailed' : 'overview');
-  }, []);
-
-  // Fetch initial data once component mounts
-  useEffect(() => {
-    fetchGroupData();
-    
-    // Cleanup function
-    return () => {
-      // Cancel any pending requests on unmount
-      Object.keys(activeRequests.current).forEach(key => {
-        delete activeRequests.current[key];
-      });
-    };
-  }, [fetchGroupData]);
-
-  // Setup polling for device status updates
-  useEffect(() => {
-    if (groups.length === 0 || isLoading) return;
-    
-    // Initial fetch
-    fetchDeviceData();
-    
-    // Setup interval for polling - 5 seconds
-    pollIntervalRef.current = setInterval(() => {
-      fetchDeviceData();
-    }, 5000);
-    
-    // Cleanup on unmount or when dependencies change
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-    };
-  }, [groups, isLoading, fetchDeviceData]);
-
-  // Render the detailed view for a specific group
-  const renderDetailedView = () => {
-    if (!activeGroupId) return <div>No group selected</div>;
-    return <RobotStatusDashboard groupId={activeGroupId} />;
-  };
+  if (loading) {
+    return (
+      <Box className="flex items-center justify-center h-screen">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column',
-      gap: '16px', 
-      padding: '16px',
-      width: '100%',
-      margin: '0 auto'
-    }}>
-      {/* View Mode Toggle */}
-      <div style={{ 
-        display: 'flex',
-        justifyContent: 'flex-end',
-        marginBottom: '16px'
-      }}>
-      
-      </div>
-
-      {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}>
-          <Spin size="large" />
-        </div>
-      ) : viewMode === 'detailed' ? (
-        /* Detailed View */
-        <Tabs 
-          activeKey={activeGroupId?.toString()}
-          onChange={(key) => setActiveGroupId(key)}
-          type="card"
+    <Box className="p-6">
+      <Box className="flex justify-between items-center mb-6">
+        <Typography variant="h4">Robot Status Dashboard</Typography>
+        <Button 
+          variant="contained" 
+          startIcon={<RefreshIcon />}
+          onClick={fetchAllData}
         >
-          {groups.map((group) => (
-            <TabPane tab={group.groupInfo.name} key={group.groupInfo.id}>
-              <RobotStatusDashboard groupId={group.groupInfo.id} />
-            </TabPane>
-          ))}
-        </Tabs>
-      ) : (
-        /* Overview (Original) View */
-        groups.map((group) => (
-          <Card
-            key={group.groupInfo.id}
-            title={
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center' 
-              }}>
-                <Typography.Title level={4} style={{ margin: 0 }}>
-                  {group.groupInfo.name}
-                </Typography.Title>
-                <Space>
-                  <Tooltip title="Refresh Group">
-                    <Button 
-                      type="primary" 
-                      icon={isRefreshing[group.groupInfo.id] ? <Spin size="small" /> : <ReloadOutlined />}
-                      onClick={() => handleRefresh(group.groupInfo.id)}
-                      disabled={isRefreshing[group.groupInfo.id]}
-                    >
-                      Refresh
-                    </Button>
-                  </Tooltip>
-                </Space>
-              </div>
-            }
-            style={{ 
-              width: '100%', 
-              marginBottom: '16px' 
-            }}
-          >
-            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: '16px' }}>
-              {group.deviceCount} {group.deviceCount === 1 ? 'Robot' : 'Robots'}
-            </Typography.Text>
+          Refresh All
+        </Button>
+      </Box>
+      
+      <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {groupsData.map((group) => (
+          <Card key={group.groupInfo.id} className="p-6">
+            <Box className="flex justify-between items-center mb-4">
+              <Typography variant="h6" className="font-bold">
+                {group.groupInfo.name}
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<RefreshIcon />}
+                onClick={() => handleRefresh(group.groupInfo.id)}
+                disabled={isRefreshing[group.groupInfo.id]}
+              >
+                {isRefreshing[group.groupInfo.id] ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  "Refresh"
+                )}
+              </Button>
+            </Box>
             
-            <div style={{ 
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-              gap: '8px' 
-            }}>
-              {group.devices.slice(0, 50).map((device) => (
+            <Typography variant="body2" className="text-gray-600 mb-4">
+              {group.deviceCount} devices 
+            </Typography>
+            
+            <Box className="flex flex-wrap gap-3 mt-4">
+              {group.devices.map((device) => (
                 <Tooltip 
-                  key={device.devEui} 
-                  title={`${device.name} - ${deviceStatus[device.devEui] ? 'Active' : 'Inactive'}`}
+                  key={device.devEui}
+                  title={
+                    <div>
+                      <div><strong>Name:</strong> {device.name}</div>
+                      {/* <div><strong>Description:</strong> {device.description || "N/A"}</div> */}
+                      <div><strong>Status:</strong> {deviceStatus[device.devEui] ? "RUNNING" : "NOT RUNNING"}</div>
+                      <div><strong>Last Seen:</strong> {new Date(device.lastSeenAt).toLocaleString()}</div>
+                    </div>
+                  }
                 >
-                  <Space 
-                    direction="vertical" 
-                    align="center" 
-                    style={{
-                      padding: '8px',
-                      background: 'rgba(0,0,0,0.02)',
-                      borderRadius: '6px',
-                      transition: 'all 0.3s ease'
+                  <Box
+                    className="rounded-full border-2 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110"
+                    sx={{
+                      width: 50,
+                      height: 50,
+                      backgroundColor: deviceStatus[device.devEui] ? "rgb(34, 197, 94)" : "rgb(156, 163, 175)",
+                      borderColor: deviceStatus[device.devEui] ? "rgb(22, 163, 74)" : "rgb(107, 114, 128)"
                     }}
                   >
-                    <div 
-                      style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        backgroundColor: deviceStatus[device.devEui] ? '#52c41a' : '#d9d9d9',
-                        boxShadow: deviceStatus[device.devEui] 
-                          ? '0 0 10px rgba(82, 196, 26, 0.5)' 
-                          : 'none',
-                        transition: 'background-color 0.3s ease, box-shadow 0.3s ease'
-                      }}
-                    />
-                    <Typography.Text 
-                      style={{ 
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        color: deviceStatus[device.devEui] ? '#52c41a' : '#999',
-                        transition: 'color 0.3s ease'
-                      }}
-                    >
-                      {device.name}
-                    </Typography.Text>
-                  </Space>
+                  
+                  </Box>
                 </Tooltip>
               ))}
-            </div>
+            </Box>
           </Card>
-        ))
-      )}
-    </div>
+        ))}
+      </Box>
+    </Box>
   );
 };
 
-export default RobotStatus;
+export default RobotStatusDashboard;
