@@ -3,15 +3,15 @@ import axios from "axios";
 
 const Configuration = () => {
   const [thresholdData, setThresholdData] = useState({
-    windSpeed: "",
-    temperature: "",
-    humidity: "",
     rain_gauge: "",
-    windDirection: "",
+    wind_speed: "",
+    wind_speed_level: "",
+    wind_direction: "",
+    wind_direction_angle: "",
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("info"); // "success", "error", "info"
+  const [messageType, setMessageType] = useState("info");
 
   useEffect(() => {
     fetchThresholdData();
@@ -19,7 +19,7 @@ const Configuration = () => {
 
   const fetchThresholdData = async () => {
     try {
-      const response = await axios.get("http://localhost:5002/api/weather-thresold");
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/weather-thresold`);
       if (response.data.success) {
         setThresholdData(response.data.result.data);
       }
@@ -41,9 +41,8 @@ const Configuration = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const method = thresholdData.id ? "put" : "post";
-      const response = await axios[method](
-        "http://localhost:5002/api/weather-thresold",
+      const response = await axios.put(
+        `${process.env.REACT_APP_BACKEND_URL}/weather-thresolds`,
         thresholdData
       );
       if (response.data.success) {
@@ -71,9 +70,10 @@ const Configuration = () => {
     }
   };
 
-  const InputField = ({ label, name, type, value, step, placeholder }) => (
+  const InputField = ({ label, name, type, value, step, placeholder, icon }) => (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+        {icon && <span className="text-lg">{icon}</span>}
         {label}
       </label>
       <input
@@ -84,59 +84,39 @@ const Configuration = () => {
         step={step}
         placeholder={placeholder}
         required
-        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 text-sm"
       />
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4 sm:px-6">
-      <div className="max-w-lg mx-auto">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="bg-indigo-600 py-4 px-6">
-            <h2 className="text-2xl font-bold text-white">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-600 to-blue-600 py-6 px-6 sm:px-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
+              <span className="text-3xl">🌤️</span>
               Weather Threshold Configuration
             </h2>
-            <p className="text-indigo-100 mt-1">
+            <p className="text-indigo-100 mt-2 text-sm sm:text-base">
               Set alert thresholds for weather parameters
             </p>
           </div>
 
           {message && (
             <div className={`m-6 p-4 rounded-lg border ${getMessageStyles()}`}>
-              {message}
+              <div className="flex items-center gap-2">
+                {messageType === "success" && <span>✅</span>}
+                {messageType === "error" && <span>❌</span>}
+                {messageType === "info" && <span>ℹ️</span>}
+                {message}
+              </div>
             </div>
           )}
 
-          <div className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField
-                  label="Wind Speed (m/s)"
-                  name="windSpeed"
-                  type="number"
-                  value={thresholdData.windSpeed}
-                  step="0.1"
-                  placeholder="Enter wind speed threshold"
-                />
-
-                <InputField
-                  label="Temperature (°C)"
-                  name="temperature"
-                  type="number"
-                  value={thresholdData.temperature}
-                  step="0.1"
-                  placeholder="Enter temperature threshold"
-                />
-
-                <InputField
-                  label="Humidity (%)"
-                  name="humidity"
-                  type="number"
-                  value={thresholdData.humidity}
-                  placeholder="Enter humidity threshold"
-                />
-
+          <div className="p-6 sm:p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <InputField
                   label="Rain Gauge (mm)"
                   name="rain_gauge"
@@ -144,48 +124,79 @@ const Configuration = () => {
                   value={thresholdData.rain_gauge}
                   step="0.1"
                   placeholder="Enter rain threshold"
+                  icon="🌧️"
+                />
+                <InputField
+                  label="Wind Speed (m/s)"
+                  name="wind_speed"
+                  type="number"
+                  value={thresholdData.wind_speed}
+                  step="0.1"
+                  placeholder="Enter wind speed threshold"
+                  icon="💨"
+                />
+                <InputField
+                  label="Wind Speed Level"
+                  name="wind_speed_level"
+                  type="number"
+                  value={thresholdData.wind_speed_level}
+                  step="1"
+                  placeholder="Enter wind speed level"
+                  icon="📊"
+                />
+                <InputField
+                  label="Wind Direction Angle (°)"
+                  name="wind_direction_angle"
+                  type="number"
+                  value={thresholdData.wind_direction_angle}
+                  step="0.1"
+                  placeholder="Enter wind direction angle"
+                  icon="🧭"
                 />
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="text-lg">🧭</span>
                   Wind Direction
                 </label>
                 <select
-                  name="windDirection"
-                  value={thresholdData.windDirection}
+                  name="wind_direction"
+                  value={thresholdData.wind_direction}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 text-sm"
                 >
                   <option value="">Select Direction</option>
-                  <option value="N">North</option>
-                  <option value="NE">North East</option>
-                  <option value="E">East</option>
-                  <option value="SE">South East</option>
-                  <option value="S">South</option>
-                  <option value="SW">South West</option>
-                  <option value="W">West</option>
-                  <option value="NW">North West</option>
+                  <option value="N">🔼 North</option>
+                  <option value="NE">↗️ North East</option>
+                  <option value="E">▶️ East</option>
+                  <option value="SE">↘️ South East</option>
+                  <option value="S">🔽 South</option>
+                  <option value="SW">↙️ South West</option>
+                  <option value="W">◀️ West</option>
+                  <option value="NW">↖️ North West</option>
                 </select>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-4">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 disabled:bg-indigo-300 disabled:cursor-not-allowed"
+                  className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-medium rounded-lg shadow-lg hover:from-indigo-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95"
                 >
                   {loading ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Saving...
                     </span>
                   ) : (
-                    "Save Thresholds"
+                    <span className="flex items-center gap-2">
+                      💾 Save Thresholds
+                    </span>
                   )}
                 </button>
               </div>

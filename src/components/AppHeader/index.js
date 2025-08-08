@@ -6,7 +6,9 @@ import {
     WbSunny,
     WindPower
 } from '@mui/icons-material';
+import AirIcon from '@mui/icons-material/Air';
 import { Umbrella } from 'lucide-react';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 
 function AppHeader() {
     const [weatherData, setWeatherData] = useState(null);
@@ -17,23 +19,37 @@ function AppHeader() {
     useEffect(() => {
         const fetchWeatherData = async () => {
             try {
-                const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/gateway`);
-
-                if (response.data && response.data.weather) {
-                    setWeatherData(response.data.weather);
-                    console.log(setWeatherData(response.data.weather))
+                const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/weatherData`);
+                if (response.data && response.data.success && response.data.data) {
+                    setWeatherData(response.data.data);
+                    setError(null);
                 } else {
-                    setWeatherData(null);
+                    // If no data or success is false, set all values to zero and warning state
+                    setWeatherData({
+                        wind_direction_angle: 0,
+                        wind_speed_level: 0,
+                        rain_gauge: 0,
+                        wind_speed: 0,
+                        wind_direction: 'N/A'
+                    });
+                    setError("No weather data available");
                 }
                 setLoading(false);
             } catch (err) {
-                console.error("Failed to fetch weather data:", err);
+                setWeatherData({
+                    wind_direction_angle: 0,
+                    wind_speed_level: 0,
+                    rain_gauge: 0,
+                    wind_speed: 0,
+                    wind_direction: 'N/A'
+                });
                 setError("Failed to fetch weather details. Please try again.");
                 setLoading(false);
             }
         };
 
-        fetchWeatherData();
+       setInterval(fetchWeatherData, 1000);
+
 
         const updateTime = () => {
             const now = new Date();
@@ -59,40 +75,41 @@ function AppHeader() {
 
     const renderWeatherDetails = () => {
         const {
-            temperature = 'N/A',
-            humidity = 'N/A',
-            windSpeed = 'N/A',
-            rain = 0,
+            wind_direction_angle = 0,
+            wind_speed_level = 0,
+            rain_gauge = 0,
+            wind_speed = 0,
+            wind_direction = 'N/A'
         } = weatherData || {};
 
+        // Show warning color if error is set
+        const warning = !!error;
+
         return (
-            <div style={{ 
-                display: 'flex', 
-                gap: '15px', 
+            <div style={{
+                display: 'flex',
+                gap: '15px',
                 alignItems: 'center',
-                backgroundColor: '#f5f5f5',
+                backgroundColor: warning ? '#fffbe6' : '#f5f5f5',
                 padding: '10px',
                 borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                border: warning ? '1px solid #ff9800' : undefined
             }}>
-                <span style={{ display: 'flex', alignItems: 'center', color: 'orange' }}>
-                    <WbSunny style={{ marginRight: '5px', color: 'orange' }} /> 
-                    {typeof temperature === 'number' ? `${temperature.toFixed(1)}°C` : temperature}
+                <span style={{ display: 'flex', alignItems: 'center', color: warning ? '#ff9800' : 'orange' }}>
+                    <AirIcon style={{ marginRight: '5px', color: warning ? '#ff9800' : 'orange' }} />
+                    Wind Dir: {wind_direction} ({wind_direction_angle}°)
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', color: 'blue' }}>
-                    <WaterDrop style={{ marginRight: '5px', color: 'blue' }} /> 
-                    Humidity: {humidity}%
+                <span style={{ display: 'flex', alignItems: 'center', color: warning ? '#ff9800' : 'blue' }}>
+                    <RocketLaunchIcon style={{ marginRight: '5px', color: warning ? '#ff9800' : 'blue' }} />
+                    Wind Speed: {wind_speed} m/s (Level {wind_speed_level})
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', color: 'green' }}>
-                    <WindPower style={{ marginRight: '5px' }} /> 
-                    Wind: {Math.floor(windSpeed*2.4)} mph
+                <span style={{ display: 'flex', alignItems: 'center', color: warning ? '#ff9800' : 'indigo' }}>
+                    <Umbrella style={{ marginRight: '5px' }} />
+                    Rain: {rain_gauge} mm
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', color: 'indigo' }}>
-                        <Umbrella style={{ marginRight: '5px' }} /> 
-                        Rain: {rain} mm
-                    </span>
                 <span style={{ display: 'flex', alignItems: 'center', color: 'gray' }}>
-                    <HistoryToggleOff style={{ marginRight: '5px' }} /> 
+                    <HistoryToggleOff style={{ marginRight: '5px' }} />
                     {localTime}
                 </span>
             </div>

@@ -10,6 +10,8 @@ import Reports from "../pages/reports";
 import Configuration from "../pages/configuration";
 import RobotErrors from "../pages/robotErrors"
 import { Avalability } from "../pages/Avalability"; 
+import RobotBatteryVolatge from "../pages/batterVoltage/index.js";
+//import {RobotBatteryVolatge} from "../pages/batterVoltage.js";
 
 // Default threshold values
 const THRESHOLD_DEFAULTS = {
@@ -103,6 +105,10 @@ function AppRoutes() {
         <Route 
           path="/robotStatus" 
           element={<RobotStatus />}  // this is for the  robot status
+        />
+        <Route
+        path="/batteryStatus"
+        element= {<RobotBatteryVolatge />}
         />
         <Route 
           path="/reports" 

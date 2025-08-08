@@ -19,6 +19,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL;
 
 const theme = createTheme({
   palette: {
@@ -48,6 +49,7 @@ const RobotErrors = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  
   const faultCodes = {
     0: "No Error",
     1: "Encoder Fault",
@@ -56,13 +58,21 @@ const RobotErrors = () => {
     4: "Low Battery Fault",
     5: "Limit Switch Fault",
     6: "Brush Motor Over Current Fault",
-    7: "High Temperature Fault"
+    7: "High Temperature Fault",
+    10: "ERR_ROBOT_STALL - Robot stalled (no encoder pulses)",
+    11: "ERR_STALL_RECOVERY - Robot Stall Recovery Failed",
+    12: "ERR_BATTERY_LOW - Low battery condition",
+    13: "ERR_OVER_TEMP_MCU - Over temperature condition of the MCU",
+    14: "ERR_OVER_TEMP_PCB - Over temperature condition of the PCB",
+    16: "ERR_INVALID_COMMAND - Invalid command received",
+    17: "ERR_DRIVE_FAULT - Drive motor fault detected",
+    18: "ERR_BRUSH_FAULT - Brush motor fault detected"
   };
 
   const fetchErrorData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5002/api/robot-error');
+      const response = await fetch(`http://localhost:5002/api/robot-error`);
       const result = await response.json();
       
       if (result.success) {
@@ -142,7 +152,7 @@ const RobotErrors = () => {
             </Typography>
             
             <Box>
-              <Button 
+              {/* <Button 
                 variant="contained" 
                 color="primary" 
                 startIcon={<RefreshIcon />} 
@@ -151,7 +161,7 @@ const RobotErrors = () => {
               >
                 Refresh
               </Button>
-              
+               */}
               <Button 
                 variant="outlined" 
                 color="primary" 

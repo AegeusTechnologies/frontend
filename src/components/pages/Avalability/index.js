@@ -122,10 +122,19 @@ export const Avalability=()=>{
         const lastseen = moment(device.lastSeenAt);
         const isValidDate = lastseen.isValid();
         const isOnline = isValidDate && lastseen.isAfter(moment().subtract(30, "minutes"));
+
+
+
+
+        if (!device.description) return;
         
         const match = device.description?.match(/(Block \d+)/);
         if (match) {
           const blockKey = match[1];
+
+          if (blockKey === "Block 2") {
+            console.log(device.name);
+          }
           
           if (!BlockLastSeen[blockKey]) {
             BlockLastSeen[blockKey] = { online: 0, offline: 0 };
@@ -141,7 +150,7 @@ export const Avalability=()=>{
         }
       });
 
-      console.log(BlockLastSeen)
+    
     
 
       setBlockStatus(BlockLastSeen);

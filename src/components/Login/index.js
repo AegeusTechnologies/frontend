@@ -71,18 +71,18 @@ const Login = ({ onLogin }) => {
             backgroundColor: '#0DB39E',
           }}
         />
+<img
+  src="/Aegeus-Technologies-logo.png"
+  alt="Company Logo"
+  style={{
+    width: '150px',
+    marginBottom: 25,
+    marginLeft: 70,
+    borderRadius: 8,
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+  }}
+/>
 
-        <img
-          src="/Aegeus-technologies-logo.png"
-          alt="Company Logo"
-          style={{
-            width: '150px',
-            marginBottom: 25,
-            marginLeft: 70,
-            borderRadius: 8,
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          }}
-        />
 
         <div className="taglines-container" style={{
           marginBottom: 30,

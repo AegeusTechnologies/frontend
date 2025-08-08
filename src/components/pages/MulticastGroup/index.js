@@ -28,12 +28,21 @@ const MulticastGroup = () => {
   const [isLoadingStop, setIsLoadingStop] = useState(false);
   const [isLoadingHome, setIsLoadingHome] = useState(false);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+  const [weatherWarnings, setWeatherWarnings] = useState([]);
+  const [buttonsDisabled, setButtonsDisabled] = useState(false);
 
   // Initial data fetching
   useEffect(() => {
     fetchGroups();
     fetchScheduledTasks();
   }, []);
+
+  useEffect(() => {
+  fetchWeatherWarnings();
+  const interval = setInterval(fetchWeatherWarnings, 30000);
+  return () => clearInterval(interval);
+}, []);
+
 
   // API functions
   const fetchGroups = async () => {
@@ -53,6 +62,50 @@ const MulticastGroup = () => {
       message.error("Error fetching scheduled tasks.");
     }
   };
+
+  
+  async function fetchWeatherWarnings() {
+  const warnings = [];
+  let shouldDisable = false;
+
+  try {
+    const thresholdRes = await fetch('http://localhost:5002/api/weather-thresold');
+    const thresholdJson = await thresholdRes.json();
+    const threshold = thresholdJson?.result?.data;
+
+    const weatherRes = await fetch('http://localhost:5002/api/weatherData');
+    const weatherJson = await weatherRes.json();
+    const current = weatherJson?.data;
+
+    if (!threshold || !current) {
+      warnings.push("Weather data or threshold is unavailable.");
+      shouldDisable = false; // ✅ Allow buttons if data is missing
+    } else {
+      if (current.rain_gauge > threshold.rain_gauge) {
+        warnings.push(`Rain gauge (${current.rain_gauge}mm) exceeds threshold (${threshold.rain_gauge}mm)`);
+        shouldDisable = true;
+      }
+
+      if (current.wind_speed > threshold.wind_speed) {
+        warnings.push(`Wind speed (${current.wind_speed} m/s) exceeds threshold (${threshold.wind_speed} m/s)`);
+        shouldDisable = true;
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching weather data:", error);
+    warnings.push("Error fetching weather or threshold data.");
+    shouldDisable = false; 
+  }
+
+  setWeatherWarnings(warnings);
+  setButtonsDisabled(warnings.length > 0);
+  if (shouldDisable) {
+    message.warning("Robot operations disabled due to weather conditions.");
+  } else {
+    message.success("Weather conditions are normal for robot operations.");
+  } 
+}
+
 
   // Handler functions
   const handleSelectAll = (checked) => {
@@ -91,10 +144,10 @@ const MulticastGroup = () => {
 
     try {
       const actionData = {
-        start: "Ag==",
-        stop: "Aw==",
-        home: "BA==",
-        reboot: "BQ==",
+        start: "qAABAgA=",
+        stop:"qAABAwA=",
+        home: "qAABBAA=",
+        reboot:"qAABBQA=",
       };
 
       const data = actionData[action];
@@ -295,6 +348,24 @@ const MulticastGroup = () => {
             </Button>
           </div>
 
+          {weatherWarnings.length > 0 && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-red-700">
+                Robot operations disabled due to weather conditions:
+              </p>
+              <ul className="mt-2 list-disc list-inside text-sm text-red-700">
+                {weatherWarnings.map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+
           {/* Select All Checkbox */}
           <div className="flex items-center">
             <Checkbox
@@ -338,7 +409,7 @@ const MulticastGroup = () => {
           <div className="flex flex-col md:flex-row justify-center items-center gap-4 pt-4">
             <Button
               onClick={() => sendDataToGroups(selectedGroups, "start")}
-              disabled={selectedGroups.length === 0 || isLoadingStop || isLoadingHome || isLoadingReboot}
+              disabled={buttonsDisabled||selectedGroups.length === 0 || isLoadingStop || isLoadingHome || isLoadingReboot}
               className="w-full md:w-auto px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isLoadingStart ? "Starting..." : "Start Now"}
@@ -346,7 +417,7 @@ const MulticastGroup = () => {
 
             <Button
               onClick={() => sendDataToGroups(selectedGroups, "stop")}
-              disabled={selectedGroups.length === 0 || isLoadingStart || isLoadingHome || isLoadingReboot}
+              disabled={buttonsDisabled||selectedGroups.length === 0 || isLoadingStart || isLoadingHome || isLoadingReboot}
               className="w-full md:w-auto px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isLoadingStop ? "Stopping..." : "Stop Now"}
@@ -354,7 +425,7 @@ const MulticastGroup = () => {
 
             <Button
               onClick={() => sendDataToGroups(selectedGroups, "home")}
-              disabled={selectedGroups.length === 0 || isLoadingStart || isLoadingStop || isLoadingReboot}
+              disabled={buttonsDisabled||selectedGroups.length === 0 || isLoadingStart || isLoadingStop || isLoadingReboot}
               className="w-full md:w-auto px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isLoadingHome ? "Returning..." : "Return to Dock"}
@@ -362,7 +433,7 @@ const MulticastGroup = () => {
             
             <Button
               onClick={() => sendDataToGroups(selectedGroups, "reboot")}
-              disabled={selectedGroups.length === 0 || isLoadingStart || isLoadingStop || isLoadingHome}
+              disabled={buttonsDisabled||selectedGroups.length === 0 || isLoadingStart || isLoadingStop || isLoadingHome}
               className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isLoadingReboot ? "Rebooting..." : "Reboot"}

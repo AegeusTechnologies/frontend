@@ -28,7 +28,8 @@ import {
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import RobotIcon from '@mui/icons-material/SmartToy';
+//import RobotIcon from '@mui/icons-material/SmartToy';
+import RobotIcon from '@mui/icons-material/SolarPowerTwoTone';
 import axios from 'axios';
 import { message, DatePicker } from 'antd';
 const { RangePicker } = DatePicker;
@@ -54,7 +55,13 @@ const RobotReportDashboard = () => {
       const data = response.data;
 
       if (data.success) {
-        setReportData(data);
+        const sortedRobots = data.robots.sort((a, b) => {
+          const numA = parseInt(a.robotName.replace(/\D/g, ""), 10);
+          const numB = parseInt(b.robotName.replace(/\D/g, ""), 10);
+          return numA - numB;
+        });
+  
+        setReportData({ ...data, robots: sortedRobots });
       } else {
         setError('Invalid data format received from server');
       }
@@ -76,11 +83,17 @@ const RobotReportDashboard = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await axios.post(`http://localhost:5002/api/report/${type}`);
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/report/${type}`);
       
       const data = response.data;
       if (data.success) {
-        setReportData(data);
+        const sortedRobots = data.robots.sort((a, b) => {
+          const numA = parseInt(a.robotName.replace(/\D/g, ""), 10);
+          const numB = parseInt(b.robotName.replace(/\D/g, ""), 10);
+          return numA - numB;
+        });
+  
+        setReportData({ ...data, robots: sortedRobots });
       } else {
         setError('Invalid data format received from server');
       }
@@ -97,9 +110,10 @@ const RobotReportDashboard = () => {
 
     try {
       // Prepare CSV content
-      const headers = ['Robot Name', 'Panels Cleaned', 'Contribution %'];
+      const headers = ['Robot Name','Block and Row' ,'Panels Cleaned', 'Contribution %'];
       let csvRows = reportData.robots.map(robot => [
         robot.robotName,
+        robot.block,
         robot.totalPanelsCleaned,
         robot.contributionPercentage
       ]);
@@ -119,9 +133,16 @@ const RobotReportDashboard = () => {
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
+
+      const date = new Date();
       
       // Include period information in filename
-      const periodInfo = reportData.year || reportData.month || 'current';
+      const periodInfo = reportData.year
+  ? `year_${date.getFullYear()}` // 2025
+  : reportData.month
+    ? `month_${date.getMonth() + 1}/${date.getFullYear()}` 
+    : `day_${date.getUTCDate()}/${date.getMonth() + 1}/${date.getFullYear()}`; /
+    
       link.setAttribute('download', `robot_report_${periodInfo}.csv`);
       
       link.style.visibility = 'hidden';
@@ -311,6 +332,7 @@ const RobotReportDashboard = () => {
                   <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
                     <TableRow>
                       <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>Robot Name</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', color: '#333' }} align="center">Blocks and Rows</TableCell>
                       <TableCell sx={{ fontWeight: 'bold', color: '#333' }} align="right">Panels Cleaned</TableCell>
                       <TableCell sx={{ fontWeight: 'bold', color: '#333' }} align="right">Contribution</TableCell>
                       <TableCell sx={{ fontWeight: 'bold', color: '#333' }} align="center">Performance</TableCell>
@@ -325,6 +347,7 @@ const RobotReportDashboard = () => {
                             {robot.robotName}
                           </Box>
                         </TableCell>
+                        <TableCell align="center">{robot.block}</TableCell>
                         <TableCell align="right">{robot.totalPanelsCleaned.toLocaleString()}</TableCell>
                         <TableCell align="right">
                           <Chip 

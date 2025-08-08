@@ -9,10 +9,14 @@ const RobotStatusDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [deviceStatus, setDeviceStatus] = useState({});
   const [isRefreshing, setIsRefreshing] = useState({});
+  //const [refreshInterval, setRefreshInterval] = useState(null);
 
   // Fetch groups and devices data
   useEffect(() => {
-    fetchAllData();
+  fetchAllData();
+  const interval = setInterval(fetchAllData, 30000); 
+  return () => clearInterval(interval); 
+   
   }, []);
 
   const fetchAllData = async () => {
@@ -39,7 +43,6 @@ const RobotStatusDashboard = () => {
   // Fetch status for all devices
   const fetchDeviceStatuses = async (deviceEuis) => {
     const statusMap = {};
-    
     await Promise.all(
       deviceEuis.map(async (devEui) => {
         try {
@@ -64,8 +67,8 @@ const RobotStatusDashboard = () => {
     
     try {
       const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/triggerAll`, {
-        groupId: [id],  // Send the array of groupIds directly
-        data: "AQ=="   // Send the action data
+        groupId: [id],  
+        data: "a800010200"   
       });
       
       if (response.data) {

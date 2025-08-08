@@ -181,7 +181,7 @@ function DeviceDetails() {
         },
         body: JSON.stringify({
           queueItem: {
-            data: "AQ==",
+            data: "qAABAQA=",
             fCnt: 0,
             fPort: 1,
             confirmed: true

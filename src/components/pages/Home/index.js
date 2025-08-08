@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
-import HC_exporting from 'highcharts/modules/exporting';
-import HC_exportData from 'highcharts/modules/export-data';
-import HC_offlineExporting from 'highcharts/modules/offline-exporting';
-
+import * as XLSX from 'xlsx';
+import { Button } from 'antd';
 
 import { 
   
@@ -43,6 +41,36 @@ const Dashboard = () => {
   const [allDevices, setAllDevices] = useState([]);
   const [batteryChart, setBatteryChart] = useState(null)
   const  [ panelsCleaned,setPanelsCleaned]= useState(null)
+  
+  
+  const exportToExcel = () => {
+  const dataToExport = inactiveDevices.map(device => ({
+    'Robot Name': device.name,
+    'Last Seen': new Date(device.lastSeenAt).toLocaleString(),
+    'Description': device.description || '',
+    'Status': 'Inactive'
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Inactive Devices');
+  XLSX.writeFile(workbook, 'inactive_devices.xlsx');
+};
+
+const exportToExcel1 = () => {
+  const dataToExport = activeDevices.map(device => ({
+    'Robot Name': device.name,
+    'Last Seen': new Date(device.lastSeenAt).toLocaleString(),
+    'Description': device.description || '',
+    'Status': 'Active'
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Inactive Devices');
+  XLSX.writeFile(workbook, 'Active_devices.xlsx');
+};
+
   
   const [dashboardData, setDashboardData] = useState({
     multicastGroups: { totalCount: 0 },
@@ -211,7 +239,7 @@ useEffect(() => {
         const devices = devicesResponse.data.result;
         // Filter active and inactive devices
         const now = new Date();
-        const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
+        const thirtyMinutes = 30* 60 * 1000; //  this is to check the timediff
         const activeDevicesList = devices.filter(device => {
           const lastSeen = new Date(device.lastSeenAt);
           return (now - lastSeen) <= thirtyMinutes;
@@ -374,38 +402,52 @@ useEffect(() => {
             )}
         </div>
               <Modal
-          title="Inactive Devices"
-          open={showInactiveDevices}
-          onCancel={() => setShowInactiveDevices(false)}
-          footer={null}
-          width={800}
-              >
-          <Table
-            dataSource={inactiveDevices}
-            columns={[
-              {
-                title: 'Robot Name',
-                dataIndex: 'name',
-                key: 'name',
-                sorter: (a, b) => a.name.localeCompare(b.name)
-              },
-              {
-                title: 'Last Seen',
-                dataIndex: 'lastSeenAt',
-                key: 'lastSeenAt',
-                render: (text) => new Date(text).toLocaleString(),
-                sorter: (a, b) => new Date(a.lastSeenAt) - new Date(b.lastSeenAt)
-              },
-              {
-                title: 'Status',
-                key: 'status',
-                render: () => <span style={{ color: 'red' }}>Inactive</span>
-              }
-            ]}
-            pagination={{ pageSize: 10 }}
-            scroll={{ y: 400 }}
-          />
-              </Modal>
+  title="Inactive Devices"
+  open={showInactiveDevices}
+  onCancel={() => setShowInactiveDevices(false)}
+  footer={null}
+  width={800}
+>
+  <div style={{ marginBottom: 16, textAlign: 'right' }}>
+    <Button type="primary" onClick={exportToExcel}>
+      Download 
+    </Button>
+  </div>
+
+  <Table
+    dataSource={inactiveDevices}
+    rowKey="id" // or any unique field like deviceId
+    columns={[
+      {
+        title: 'Robot Name',
+        dataIndex: 'name',
+        key: 'name',
+        sorter: (a, b) => a.name.localeCompare(b.name),
+      },
+      {
+        title: 'Last Seen',
+        dataIndex: 'lastSeenAt',
+        key: 'lastSeenAt',
+        render: (text) => new Date(text).toLocaleString(),
+        sorter: (a, b) => new Date(a.lastSeenAt) - new Date(b.lastSeenAt),
+      },
+      {
+        title: 'Location',
+        dataIndex: 'description',
+        key: 'description',
+        sorter: (a, b) => (a.description || '').localeCompare(b.description || ''),
+      },
+      {
+        title: 'Status',
+        key: 'status',
+        render: () => <span style={{ color: 'red' }}>Inactive</span>,
+      }
+    ]}
+    pagination={{ pageSize: 10 }}
+    scroll={{ y: 400 }}
+  />
+</Modal>
+
 
               <Modal
           title="All Robots"
@@ -445,6 +487,12 @@ useEffect(() => {
         footer={null}
         width={800}
       >
+
+<div style={{ marginBottom: 16, textAlign: 'right' }}>
+    <Button type="primary" onClick={exportToExcel1}>
+      Download 
+    </Button>
+  </div>
         <Table
           dataSource={activeDevices}
           columns={[
@@ -453,6 +501,12 @@ useEffect(() => {
           dataIndex: 'name',
           key: 'name',
           sorter: (a, b) => a.name.localeCompare(b.name)
+        },
+        {
+          title: 'Location',
+          dataIndex: 'description',
+          key: 'description',
+          sorter: (a, b) => (a.description || '').localeCompare(b.description || ''),
         },
         {
           title: 'Last Seen',
