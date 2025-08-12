@@ -47,6 +47,9 @@ import {
   Error as ErrorIcon
 } from "@mui/icons-material";
 
+
+let deviceName = ""
+
 const API_BASE_URL = process.env.REACT_APP_BACKEND_URL;
 
 const channelMapping = {
@@ -128,12 +131,13 @@ function DeviceDetails() {
     
     // Extract values from the correct nested structure
     const rssi = data.rxInfo?.[0]?.rssi ?? 'N/A';
-    const deviceName = data.deviceInfo?.deviceName ?? 'N/A';
+    deviceName = data.deviceInfo?.deviceName ?? 'N/A';
+    //let ch1 = processedData.CH1 ? processedData.CH1 : deviceName;
     
     const processedData = {
       ...generateDefaultData(),
-      ...(data.object || {}),  // Note: using 'object' instead of 'Object'
-      CH1: deviceName,
+      ...(data.object || {}),  
+  
       CH3: rssi
     };
 
@@ -265,7 +269,7 @@ function DeviceDetails() {
             mb: isMobile ? 2 : 0
           }}
         >
-          Robot Details: {deviceData.CH1}
+          Robot Details: {deviceName}
         </Typography>
         <Tooltip title="Refresh Device Data">
           <IconButton 

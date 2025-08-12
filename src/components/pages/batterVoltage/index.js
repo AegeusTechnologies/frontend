@@ -14,11 +14,43 @@ const RobotBatteryVoltage = () => {
   const LOW_THRESHOLD = 23.0;
   const MAX_VOLTAGE = 30.0;
 
+  console.log("this is only for the testign purpsoe",devicesData);
+
   useEffect(() => {
     fetchAllData();
   }, []);
 
+  const downloadData = () => {
+    const headers = ["Block", "Robot Name", "batteryVolt"];
+  
+    const csvRows = [
+      headers.join(","),
+      ...Object.entries(devicesData).flatMap(([groupName, devices]) =>
+        devices.map(device =>
+          `${device.description}, ${device.name}, ${device.batteryVolt || 'N/A'}`
+        )
+      )
+    ];
+  
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute(
+      'download',
+      `robot_battery_data_${new Date().toISOString().split('T')[0]}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    message.success("Data downloaded successfully");
+  };
+  
+
   const fetchAllData = async () => {
+    
     setLoading(true);
     try {
       const response = await axios.get("http://localhost:5002/api/Groupdevices");
@@ -96,12 +128,12 @@ const RobotBatteryVoltage = () => {
         <Typography variant="h5" className="font-bold">
           Robots Battery Monitoring
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<RefreshCcwDot />}
-          onClick={fetchAllData}
+        <Button 
+        variant='contained'
+        color='primary'
+        onClick={downloadData} 
         >
-          Refresh
+            download
         </Button>
       </Box>
 

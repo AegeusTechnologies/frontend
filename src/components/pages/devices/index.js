@@ -9,6 +9,8 @@ import {
   CloseCircleOutlined,
   WifiOutlined, RobotOutlined
 } from "@ant-design/icons";
+import { Try } from '@mui/icons-material';
+import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
 const ITEMS_PER_PAGE = 10;
@@ -59,7 +61,7 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
   
     setWeatherWarnings(warnings);
     setButtonsDisabled(shouldDisable);
-    setCount(warnings.length);
+    //setCount(warnings.length);
   } // ✅ This closing brace was missing
   
 
@@ -69,7 +71,7 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
     try {
       const response = await fetch(`${API_BASE_URL}/devices`);
       if (!response.ok) throw new Error("Failed to fetch devices");
-  
+    
       const devicesData = await response.json();
       setDevices(devicesData.result);
     } catch (error) {
@@ -83,10 +85,27 @@ async function fetchData() {
   setLoading(true);
   await Promise.all([
     fetchWeatherWarnings(),
-    fetchDevicesData()
+    fetchDevicesData(),
+    fetchCOunt()
   ]);
 }
+ 
   
+const fetchCOunt = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/events/count`);
+    if (response.data.success) {
+      setCount(response.data.count);
+    } else {
+      console.error('Failed to fetch count:', response.data);
+      setCount(0); // Set default value if success is false
+    }
+  } catch (error) {
+    console.error('Error fetching count:', error);
+    setCount(0); // Set default value on error
+    message.error('Failed to fetch message count');
+  }
+}
 
   useEffect(() => {
     fetchData();
@@ -227,7 +246,7 @@ async function fetchData() {
   ];
 
   const filteredDevices = devices.filter(device =>
-    device.name.toLowerCase().includes(searchTerm.toLowerCase()) || device.description.toLowerCase().includes(searchTerm.toLowerCase())
+    device.name.toLowerCase().includes(searchTerm.toLowerCase()) || device.devEui.toLowerCase().includes(searchTerm.toLowerCase()) || device.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (

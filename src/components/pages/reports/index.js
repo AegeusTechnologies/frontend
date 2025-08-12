@@ -141,7 +141,7 @@ const RobotReportDashboard = () => {
   ? `year_${date.getFullYear()}` // 2025
   : reportData.month
     ? `month_${date.getMonth() + 1}/${date.getFullYear()}` 
-    : `day_${date.getUTCDate()}/${date.getMonth() + 1}/${date.getFullYear()}`; /
+    : `day_${date.getUTCDate()}/${date.getMonth() + 1}/${date.getFullYear()}`; 
     
       link.setAttribute('download', `robot_report_${periodInfo}.csv`);
       

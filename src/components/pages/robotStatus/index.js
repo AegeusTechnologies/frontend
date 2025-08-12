@@ -68,7 +68,7 @@ const RobotStatusDashboard = () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/triggerAll`, {
         groupId: [id],  
-        data: "a800010200"   
+        data: "a800010100"   
       });
       
       if (response.data) {
