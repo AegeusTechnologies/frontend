@@ -47,13 +47,15 @@ const RobotBatteryVoltage = () => {
     URL.revokeObjectURL(url);
     message.success("Data downloaded successfully");
   };
+
   
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL;
 
   const fetchAllData = async () => {
     
     setLoading(true);
     try {
-      const response = await axios.get("http://localhost:5002/api/Groupdevices");
+      const response = await axios.get(`${API_BASE_URL}/Groupdevices`);
 
       if (response.data.success) {
         const groups = response.data.data;

@@ -4,6 +4,11 @@ import { Refresh as RefreshIcon } from "@mui/icons-material";
 import axios from "axios";
 import { message } from "antd";
 
+
+
+
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL;
+
 const RobotStatusDashboard = () => {
   const [groupsData, setGroupsData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +27,7 @@ const RobotStatusDashboard = () => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5002/api/Groupdevices");
+      const response = await fetch(`${API_BASE_URL}/Groupdevices`);
       const result = await response.json();
       if (result.success) {
         setGroupsData(result.data);
@@ -46,8 +51,9 @@ const RobotStatusDashboard = () => {
     await Promise.all(
       deviceEuis.map(async (devEui) => {
         try {
-          const response = await fetch(`http://localhost:5002/api/status/${devEui}`);
+          const response = await fetch(`${API_BASE_URL}/status/${devEui}`);
           const result = await response.json();
+          console.log(`Status for device ${devEui}:`, result);
           statusMap[devEui] = result.status === "RUNNING";
         } catch (error) {
           console.error(`Error fetching status for device ${devEui}:`, error);

@@ -31,11 +31,11 @@ function Devices({ humidityThreshold, rainThreshold, windSpeedThreshold }) {
     let shouldDisable = false;
   
     try {
-      const thresholdRes = await fetch('http://localhost:5002/api/weather-thresold');
+      const thresholdRes = await fetch(`${API_BASE_URL}/weather-thresold`);
       const thresholdJson = await thresholdRes.json();
       const threshold = thresholdJson?.result?.data;
   
-      const weatherRes = await fetch('http://localhost:5002/api/weatherData');
+      const weatherRes = await fetch(`${API_BASE_URL}/weatherData`);
       const weatherJson = await weatherRes.json();
       const current = weatherJson?.data;
   
@@ -96,13 +96,11 @@ const fetchCOunt = async () => {
     const response = await axios.get(`${API_BASE_URL}/events/count`);
     if (response.data.success) {
       setCount(response.data.count);
-    } else {
-      console.error('Failed to fetch count:', response.data);
-      setCount(0); // Set default value if success is false
+
+      console.log("this is user count", response.data.count);
     }
   } catch (error) {
-    console.error('Error fetching count:', error);
-    setCount(0); // Set default value on error
+    console.error('Error fetching count:', error)
     message.error('Failed to fetch message count');
   }
 }

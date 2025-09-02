@@ -33,6 +33,7 @@ const SideMenu = ({ collapsed, onCollapse, onLogout }) => {
     { label : 'Battery Status', key: '/batteryStatus', icon: <BatteryCharging90Icon /> },
     { label: 'Configuration', key: '/configuration', icon: <SettingsIcon /> },
     { label: 'Fault Log', key: '/robotErrors', icon: <WarningAmberIcon /> },
+    {label: 'RunningStatus', key: '/RunningStaus', icon: <SystemUpdateAltIcon /> },
     { label: 'Availability', key: '/avalability', icon: <PieChartIcon /> },
     { label: 'Reports', key: '/reports', icon: <BarChartIcon /> },
     { label: 'Logout', key: 'logout', icon: <LogoutIcon />, onClick: onLogout },

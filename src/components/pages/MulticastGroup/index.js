@@ -409,7 +409,7 @@ const MulticastGroup = () => {
           <div className="flex flex-col md:flex-row justify-center items-center gap-4 pt-4">
             <Button
               onClick={() => sendDataToGroups(selectedGroups, "start")}
-              disabled={buttonsDisabled||selectedGroups.length === 0 || isLoadingStop || isLoadingHome || isLoadingReboot}
+              disabled={selectedGroups.length === 0 || isLoadingStop || isLoadingHome || isLoadingReboot}
               className="w-full md:w-auto px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isLoadingStart ? "Starting..." : "Start Now"}

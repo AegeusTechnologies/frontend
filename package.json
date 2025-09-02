@@ -23,6 +23,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "express": "^4.21.2",
+    "file-saver": "^2.0.5",
     "highcharts": "^12.1.2",
     "highcharts-react-official": "^3.2.1",
     "loglevel": "^1.9.2",
@@ -48,7 +49,8 @@
     "styled-components": "^6.1.16",
     "tailwind-merge": "^3.0.2",
     "tailwindcss": "^3.4.14",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",

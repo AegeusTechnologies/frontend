@@ -11,6 +11,8 @@ import Configuration from "../pages/configuration";
 import RobotErrors from "../pages/robotErrors"
 import { Avalability } from "../pages/Avalability"; 
 import RobotBatteryVolatge from "../pages/batterVoltage/index.js";
+import autoCount from "../pages/Autoruncount/index.js";
+import AutoCount from "../pages/Autoruncount/index.js";
 //import {RobotBatteryVolatge} from "../pages/batterVoltage.js";
 
 // Default threshold values
@@ -111,12 +113,16 @@ function AppRoutes() {
         element= {<RobotBatteryVolatge />}
         />
         <Route 
-          path="/reports" 
-          element={<Reports />} 
+          path="/RunningStaus" 
+          element={<AutoCount />} 
         />
          <Route 
           path="/robotErrors" 
           element={<RobotErrors />} 
+        />
+        <Route 
+          path="/reports" 
+          element={<Reports />} 
         />
         <Route 
           path="/configuration"

@@ -64,12 +64,32 @@ const channelMapping = {
   "CH9": { name: "Position", icon: LocationIcon },
   "CH15": { name: "Auto Runs", icon: AutoRunIcon },
   "CH16": { name: "Manual Runs", icon: ManualRunIcon },
-  "CH7": { name: "Fault Code", icon: FaultIcon },
   "CH17": { name: "Temperature", icon: TemperatureIcon },
   "CH4": { name: "Battery SOC", icon: BatteryIcon },
   "CH5": { name: "Battery Voltage", icon: VoltageIcon },
   "CH6": { name: "Discharge Cycles", icon: ChargingIcon },
   "CH14": { name: "Battery Current", icon: BatteryIcon },
+  "CH7": { name: "Fault Code", icon: FaultIcon },
+};
+
+ 
+const faultCodes = {
+  0: "No Error",
+  1: "Encoder Fault",
+  2: "Peripheral Fault",
+  3: "IO Expander Fault",
+  4: "Low Battery Fault",
+  5: "No error ",
+  6: "Brush Motor Over Current",
+  7: "High Temperature Fault",
+  10: "Robot stalled (no encoder pulses)",
+  11: "Robot Stall Recovery Failed",
+  12: "Low battery",
+  13: "Over temperature condition of the MCU",
+  14: "Over temperature condition of the PCB",
+  16: "Invalid command received",
+  17: "Drive motor fault detected",
+  18: "Brush motor fault detected"
 };
 
 const generateDefaultData = () => {
@@ -144,6 +164,7 @@ function DeviceDetails() {
     // Add units and format specific values
     if (processedData.CH4) processedData.CH4 = `${processedData.CH4}%`; // Battery SOC
     if (processedData.CH5) processedData.CH5 = `${processedData.CH5}V`; // Battery Voltage
+    if(processedData.CH7) processedData.CH7 = faultCodes[processedData.CH7] || "No Error";  // this is the fault code
     if (processedData.CH17) processedData.CH17 = `${processedData.CH17}°C`; // Temperature
     if (processedData.CH3) processedData.CH3 = `${processedData.CH3} dBm`; // RSSI
 

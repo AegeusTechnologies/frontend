@@ -49,6 +49,8 @@ const RobotErrors = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL;
   
   const faultCodes = {
     0: "No Error",
@@ -56,7 +58,7 @@ const RobotErrors = () => {
     2: "Peripheral Fault",
     3: "IO Expander Fault",
     4: "Low Battery Fault",
-    5: "Limit Switch Fault",
+    5: "No error ",
     6: "Brush Motor Over Current Fault",
     7: "High Temperature Fault",
     10: "ERR_ROBOT_STALL - Robot stalled (no encoder pulses)",
@@ -72,7 +74,7 @@ const RobotErrors = () => {
   const fetchErrorData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5002/api/robot-error`);
+      const response = await fetch(`${API_BASE_URL}/robot-error`);
       const result = await response.json();
       
       if (result.success) {
